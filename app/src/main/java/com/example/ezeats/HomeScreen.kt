@@ -1,5 +1,6 @@
 package com.example.ezeats
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,6 +12,10 @@ import androidx.navigation.NavController
 
 @Composable
 fun HomeScreen(navController: NavController) {
+    BackHandler(enabled = true) {
+        // Do nothing, back is disabled
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -26,7 +31,7 @@ fun HomeScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { navController.navigate("search") }, // Navigate to search screen
+            onClick = { navController.navigate(Screen.Search.route) }, // Navigate to search screen
             shape = RoundedCornerShape(50),
             modifier = Modifier
                 .fillMaxWidth()
@@ -38,7 +43,7 @@ fun HomeScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { navController.navigate("bookmark") },
+            onClick = { navController.navigate(Screen.Bookmarked.route) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)
@@ -49,7 +54,7 @@ fun HomeScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { navController.navigate("account") },
+            onClick = { navController.navigate(Screen.Account.route) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(100.dp)
