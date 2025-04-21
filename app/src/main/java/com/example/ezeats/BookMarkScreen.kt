@@ -2,41 +2,53 @@ package com.example.ezeats
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.ezeats.recipe.RecipePreview
+import com.example.ezeats.recipe.RecipePreviewCard
+import com.example.ezeats.recipe.RecipeWebView
+
 
 
 @Composable
 fun BookMarkScreen() {
-    BackHandler(enabled = true) {
-        // Do nothing, back is disabled
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "BookMark",
-            style = MaterialTheme.typography.headlineLarge
+    BackHandler(enabled = true) {}
+//https://www.halfbakedharvest.com/giant-chocolate-chip-cookie-cookie-dough-peanut-butter-cups/
+    var isLoading by remember { mutableStateOf(false) }
+    var recipes by remember { mutableStateOf<List<RecipePreview>>(emptyList()) }
+    var selectedRecipe by remember { mutableStateOf<RecipePreview?>(null) }
+
+    // Display RecipeWebView when a recipe is selected
+    if (selectedRecipe != null) {
+        RecipeWebView(
+            url = selectedRecipe!!.url,
+            onBack = { selectedRecipe = null }
         )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = { /* TODO: Create account */ },
+    } else {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Text("Create\nAccount")
+
+            when {
+                isLoading -> CircularProgressIndicator()
+                recipes.isNotEmpty() -> {
+                    LazyColumn {
+                        items(recipes) { recipe ->
+                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it})
+                        }
+                    }
+                }
+            }
         }
     }
 }
