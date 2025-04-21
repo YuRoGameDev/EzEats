@@ -1,4 +1,4 @@
-package com.example.ezeats
+package com.example.ezeats.Screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*

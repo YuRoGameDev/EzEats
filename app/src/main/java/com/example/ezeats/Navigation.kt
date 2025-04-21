@@ -16,6 +16,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ezeats.Screens.AccountScreen
+import com.example.ezeats.Screens.BookMarkScreen
+import com.example.ezeats.Screens.HomeScreen
+import com.example.ezeats.Screens.SearchScreen
 
 
 sealed class Screen(val route: String, val label: String) {

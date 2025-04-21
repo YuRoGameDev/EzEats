@@ -1,4 +1,4 @@
-package com.example.ezeats
+package com.example.ezeats.Screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
+import com.example.ezeats.Screen
 
 @Composable
 fun HomeScreen(navController: NavController) {

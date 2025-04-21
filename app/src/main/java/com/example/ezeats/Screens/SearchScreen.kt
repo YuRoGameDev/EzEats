@@ -1,4 +1,4 @@
-package com.example.ezeats
+package com.example.ezeats.Screens
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.BackHandler
