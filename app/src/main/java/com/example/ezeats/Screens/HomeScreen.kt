@@ -1,5 +1,6 @@
 package com.example.ezeats.Screens
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -8,6 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,7 +19,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
+import com.example.ezeats.DatabaseProvider
 import com.example.ezeats.Screen
+import com.example.ezeats.UserDataDao
 
 @Composable
 fun HomeScreen(navController: NavController) {
@@ -25,6 +31,14 @@ fun HomeScreen(navController: NavController) {
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val buttonMaxWidth = if (screenWidth > 600.dp) 400.dp else Dp.Unspecified
+
+    val isLoggedIn = remember { mutableStateOf(false) }
+    LaunchedEffect(true) {
+        val status = DatabaseProvider.db.userDataDao().isUserLoggedIn()
+        isLoggedIn.value = status
+        println("Is Logged in?:" + status)
+        //DatabaseProvider.db.userDataDao().updateBookmarkedUrls(listOf("https://www.halfbakedharvest.com/giant-chocolate-chip-cookie-cookie-dough-peanut-butter-cups/"))
+    }
 
     Column(
         modifier = Modifier
@@ -86,7 +100,9 @@ fun HomeScreen(navController: NavController) {
                 .then(if (buttonMaxWidth != Dp.Unspecified) Modifier.width(buttonMaxWidth) else Modifier.fillMaxWidth())
                 .height(52.dp)
         ) {
-            Text("Create Account", fontSize = 25.sp)
+            Text(
+                text = if (isLoggedIn.value) "My Account" else "Create Account",
+                fontSize = 25.sp)
         }
     }
 }
