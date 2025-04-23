@@ -15,5 +15,3 @@ EZ Eats is a food discovery and meal planning app designed to help users explore
 ❤️ Favorite Dishes and access them anytime
 
 🔄 Easy Navigation with a clean, user-friendly UI
-
-<h2> Icons </h2>
