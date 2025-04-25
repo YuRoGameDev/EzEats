@@ -45,13 +45,19 @@ object DatabaseProvider {
 
     fun setList(){
         CoroutineScope(Dispatchers.IO).launch {
-            val urls = db.userDataDao().getBookmarkedUrls()
+            val user = db.userDataDao().getBookmarkedUrls()
+            val urls = user?.bookmarkedUrls ?: emptyList()
             bookmarkedUrlsList = urls.toMutableList()
         }
     }
 
     fun getBookmarkedUrls(): List<String> {
+        println(bookmarkedUrlsList)
         return bookmarkedUrlsList
+    }
+
+    fun isBookmarked(url:String): Boolean{
+        return bookmarkedUrlsList.contains(url)
     }
 
     fun addBookmark(url: String) {

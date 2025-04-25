@@ -31,18 +31,18 @@ fun BookMarkScreen() {
     var isLoading by remember { mutableStateOf(false) }
     var recipes by remember { mutableStateOf<List<RecipePreview>>(emptyList()) }
     var selectedRecipe by remember { mutableStateOf<RecipePreview?>(null) }
-    var bookmarkedUrls = remember { mutableStateOf(DatabaseProvider.getBookmarkedUrls()) }
-
+    var bookmarkedUrls by remember { mutableStateOf(DatabaseProvider.getBookmarkedUrls()) }
+    var refreshTrigger by remember {  mutableStateOf(0) }
 
 
     print(bookmarkedUrls)
-    LaunchedEffect(bookmarkedUrls.value) {
+    LaunchedEffect(refreshTrigger) {
         coroutineScope.launch {
             isLoading = true
             recipes = emptyList()
 
             // Fetch the previews for each recipe URL
-            recipes = fetchRecipePreviews(bookmarkedUrls.value)
+            recipes = fetchRecipePreviews(bookmarkedUrls)
             isLoading = false
         }
     }
@@ -65,7 +65,15 @@ fun BookMarkScreen() {
                 recipes.isNotEmpty() -> {
                     LazyColumn {
                         items(recipes) { recipe ->
-                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it})
+                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it},
+                                onBookmarkClicked = {
+                                    if(DatabaseProvider.isBookmarked(it)){
+                                        DatabaseProvider.removeBookmark(it)
+                                    }else{
+                                        DatabaseProvider.addBookmark(it)
+                                    }
+
+                                })
                         }
                     }
                 }

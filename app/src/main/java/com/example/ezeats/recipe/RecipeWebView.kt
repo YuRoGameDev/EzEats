@@ -31,7 +31,11 @@ import androidx.compose.ui.unit.dp
 import java.util.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.example.ezeats.DatabaseProvider
 
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -41,7 +45,7 @@ fun RecipeWebView(
     onBack: () -> Unit
 ) {
     var webView: WebView? = remember { null }
-
+    var isBookmarked by remember { mutableStateOf(DatabaseProvider.isBookmarked(url)) }
     BackHandler {
         if (webView?.canGoBack() == true) {
             webView?.goBack()
@@ -107,13 +111,20 @@ fun RecipeWebView(
         ) {
 
             IconButton(
-                onClick = onBack,
+                onClick = {
+                    if(DatabaseProvider.isBookmarked(url)){
+                        DatabaseProvider.removeBookmark(url)
+                    }else{
+                        DatabaseProvider.addBookmark(url)
+                    }
+                    isBookmarked = !isBookmarked
+                },
                 modifier = Modifier
                     .background(Color.Black, shape = CircleShape)
                     .size(50.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Share,
+                    imageVector = if(isBookmarked) Icons.Default.Share else Icons.Default.Close,
                     contentDescription = "Bookmark",
                     tint = Color.White
                 )

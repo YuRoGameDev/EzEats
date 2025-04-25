@@ -41,8 +41,8 @@ interface UserDataDao {
     suspend fun getPassword(): String
 
     // Get the user's bookmarked URLs
-    @Query("SELECT bookmarked_urls FROM user_data WHERE id = 1 LIMIT 1")
-    suspend fun getBookmarkedUrls(): List<String>
+    @Query("SELECT * FROM user_data WHERE id = 1 LIMIT 1")
+    suspend fun getBookmarkedUrls(): UserData?
 
     // Update user's bookmarked URLs
     @Query("UPDATE user_data SET bookmarked_urls = :urls WHERE id = 1")

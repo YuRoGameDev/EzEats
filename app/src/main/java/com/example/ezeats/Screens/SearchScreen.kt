@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.ezeats.DatabaseProvider
 import com.example.ezeats.recipe.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,7 @@ import java.net.URL
 import java.net.URLEncoder
 
 // Function to search for recipes and fetch the top 10 URLs
-suspend fun searchRecipes(query: String): List<String> = withContext(Dispatchers.IO) {
+suspend fun searchRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> = withContext(Dispatchers.IO) {
     val apiKey = "AIzaSyBIY4Za1x9wIaWCoYhh0-x64TFAW-hOgCg"
     val cseId = "13f9e92f2347c46c6"
     val encodedQuery = URLEncoder.encode(query, "UTF-8")
@@ -26,8 +27,15 @@ suspend fun searchRecipes(query: String): List<String> = withContext(Dispatchers
 
     try {
         var startIndex = 1
+        val startTime = System.currentTimeMillis()
 
-        while (urls.size < 100) {
+        while (urls.size < querySize) {
+            // Check if time limit has been exceeded
+            if (System.currentTimeMillis() - startTime > timeLimitMs) {
+                println("Time limit exceeded.")
+                break
+            }
+
             val searchUrl =
                 "https://www.googleapis.com/customsearch/v1?key=$apiKey&cx=$cseId&q=$encodedQuery&start=$startIndex"
             val url = URL(searchUrl)
@@ -48,21 +56,24 @@ suspend fun searchRecipes(query: String): List<String> = withContext(Dispatchers
                 if (link.startsWith("http")) {
                     urls.add(link)
                     println(link)
-                    if (urls.size >= 100) break
+                    if (urls.size >= querySize) break
                 }
             }
 
             // Increment by 10 for the next page
             startIndex += 10
+            delay(1000) // Be polite and avoid rate limiting
         }
+    } catch (e: TimeoutCancellationException) {
+        println("Search operation timed out.")
     } catch (e: Exception) {
         e.printStackTrace()
     }
 
-    urls.take(100)
+    urls.take(querySize)
 }
 
-suspend fun searchDuckRecipes(query: String): List<String> = withContext(Dispatchers.IO) {
+suspend fun searchDuckRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> = withContext(Dispatchers.IO) {
     val encodedQuery = URLEncoder.encode("$query recipe", "UTF-8")
     val urls = mutableSetOf<String>()
 
@@ -76,7 +87,15 @@ suspend fun searchDuckRecipes(query: String): List<String> = withContext(Dispatc
 
     try {
         var start = 0
-        while (urls.size < 100) {
+        val startTime = System.currentTimeMillis()
+
+        while (urls.size < querySize) {
+            // Check if time limit has been exceeded
+            if (System.currentTimeMillis() - startTime > timeLimitMs) {
+                println("Time limit exceeded.")
+                break
+            }
+
             val duckUrl = "https://html.duckduckgo.com/html/?q=$encodedQuery&s=$start"
             val doc = Jsoup.connect(duckUrl)
                 .userAgent("Mozilla/5.0")
@@ -89,20 +108,25 @@ suspend fun searchDuckRecipes(query: String): List<String> = withContext(Dispatc
             for (element in results) {
                 val href = element.absUrl("href")
                 if (href.startsWith("http") && allowedDomains.any { href.contains(it) }) {
-                    urls.add(href)
-                    println(href)
-                    if (urls.size >= 25) break
+                    // Avoid adding duplicate URLs
+                    if (!urls.contains(href)) {
+                        urls.add(href)
+                        println(href)
+                    }
+                    if (urls.size >= querySize) break
                 }
             }
 
-            start += 50
+            start += 50 // Move to the next page (increment the start by 50)
             delay(1000) // Be polite and avoid rate limiting
         }
+    } catch (e: TimeoutCancellationException) {
+        println("Search operation timed out.")
     } catch (e: Exception) {
         e.printStackTrace()
     }
 
-    urls.take(25).toList()
+    urls.take(querySize).toList()
 }
 
 
@@ -145,7 +169,8 @@ fun SearchScreen() {
                         recipes = emptyList()
 
                         // Fetch recipe URLs from the search query
-                        val urls = searchDuckRecipes(searchTerm)
+                        val urls = searchRecipes(searchTerm, 25, 10000)
+                        //val urls = searchDuckRecipes(searchTerm,25, 10000)
 
                         // Fetch the previews for each recipe URL
                         recipes = fetchRecipePreviews(urls)
@@ -164,7 +189,14 @@ fun SearchScreen() {
                 recipes.isNotEmpty() -> {
                     LazyColumn {
                         items(recipes) { recipe ->
-                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it})
+                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it},
+                                onBookmarkClicked = {
+                                    if(DatabaseProvider.isBookmarked(it)){
+                                        DatabaseProvider.removeBookmark(it)
+                                    }else {
+                                        DatabaseProvider.addBookmark(it)
+                                    }
+                                })
                         }
                     }
                 }

@@ -7,7 +7,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
-import org.json.JSONException
 import org.json.JSONTokener
 import java.util.regex.Pattern
 import org.jsoup.nodes.Document
@@ -16,38 +15,37 @@ import org.jsoup.nodes.Document
 // Function to fetch recipe previews from a list of URLs
 suspend fun fetchRecipePreviews(urls: List<String>): List<RecipePreview> {
     // Use async to run the requests concurrently
-    val deferredResults = urls.map { url ->
-        GlobalScope.async(Dispatchers.IO) {
-            fetchRecipePreview(url)
-        }
+    return coroutineScope {
+        urls.map { url ->
+            async(Dispatchers.IO) { fetchRecipePreview(url) }
+        }.awaitAll().filterNotNull()
     }
 
     // Wait for all the async tasks to complete and gather the results
-    return deferredResults.awaitAll().filterNotNull() // Filter out null results
+    //return deferredResults.awaitAll().filterNotNull() // Filter out null results
 }
 
 
 
-suspend fun fetchRecipePreview(url: String): RecipePreview? = withContext(Dispatchers.IO) {
-    try {
-        val doc = fetchRecipeFromUrl(url) ?: return@withContext null
-        val recipeJson = extractRecipeJson(doc) ?: return@withContext null
+suspend fun fetchRecipePreview(url: String): RecipePreview? {
+    val doc = fetchRecipeFromUrl(url) ?: return null
 
-        return@withContext parseRecipeJson(recipeJson, url)
-    } catch (e: Exception) {
-        println("Error loading URL: $url")
-        e.printStackTrace()
-        null
-    }
+    // Attempt to extract structured data (JSON-LD)
+    val json = extractRecipeJson(doc)
+
+    return json?.let { parseJsonToRecipePreview(it, url) }
+        ?: fallbackScrapeRecipe(doc, url)
 }
 
 // Helper function to fetch the document and extract the JSON-LD
-fun fetchRecipeFromUrl(url: String): Document? {
-    return try {
-        Jsoup.connect(url)
-            .userAgent("Mozilla/5.0")
-            .timeout(10000)
-            .get()
+suspend fun fetchRecipeFromUrl(url: String): Document? = withContext(Dispatchers.IO) {
+    return@withContext try {
+        withTimeout(15_000) { // 15 seconds
+            Jsoup.connect(url)
+                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                .timeout(15_000)
+                .get()
+        }
     } catch (e: Exception) {
         println("Error fetching URL: $url")
         e.printStackTrace()
@@ -58,44 +56,83 @@ fun fetchRecipeFromUrl(url: String): Document? {
 // Helper function to extract the first recipe JSON-LD from the document
 fun extractRecipeJson(doc: Document): JSONObject? {
     val scriptTags = doc.select("script[type=application/ld+json]")
-    if (scriptTags.isEmpty()) {
-        println("No recipe JSON found")
-        return null
-    }
-
     for (tag in scriptTags) {
+        val rawJson = tag.html().trim()
         try {
-            val rawJson = tag.html()
-            val parsed = JSONTokener(rawJson).nextValue()
+            val parsedJson = JSONTokener(rawJson).nextValue()
 
-            val candidates = mutableListOf<JSONObject>()
-            when (parsed) {
-                is JSONObject -> {
-                    if (parsed.has("@graph")) {
-                        val graph = parsed.getJSONArray("@graph")
-                        for (i in 0 until graph.length()) {
-                            val item = graph.optJSONObject(i)
-                            if (item != null && isRecipeType(item)) candidates.add(item)
-                        }
-                    } else if (isRecipeType(parsed)) candidates.add(parsed)
-                }
-                is JSONArray -> {
-                    for (i in 0 until parsed.length()) {
-                        val item = parsed.optJSONObject(i)
-                        if (item != null && isRecipeType(item)) candidates.add(item)
+            // Handle case when there's a single Recipe object
+            if (parsedJson is JSONObject && parsedJson.optString("@type").contains("Recipe", ignoreCase = true)) {
+                return parsedJson
+            }
+
+            // Handle case for @graph array containing multiple objects
+            if (parsedJson is JSONObject && parsedJson.has("@graph")) {
+                val graph = parsedJson.getJSONArray("@graph")
+                for (i in 0 until graph.length()) {
+                    val entry = graph.getJSONObject(i)
+                    if (entry.optString("@type").contains("Recipe", ignoreCase = true)) {
+                        return entry
                     }
                 }
             }
 
-            return candidates.firstOrNull()
-        } catch (inner: Exception) {
-            continue
+            // Handle case for array of Recipe objects
+            if (parsedJson is JSONArray) {
+                for (i in 0 until parsedJson.length()) {
+                    val obj = parsedJson.getJSONObject(i)
+                    if (obj.optString("@type").contains("Recipe", ignoreCase = true)) {
+                        return obj
+                    }
+                }
+            }
+
+        } catch (e: Exception) {
+            println("Failed to parse JSON-LD from: $rawJson")
         }
     }
+
+    println("No recipe JSON found in structured data")
     return null
 }
 
+// Parse the structured JSON to RecipePreview
+fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
+    val title = json.optString("name")
+    val imageUrl = json.optString("image")
+    val author = json.optString("author")
+    val rating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
+    val reviews = json.optJSONObject("aggregateRating")?.optInt("reviewCount")
+    val time = json.optString("cookTime")
+    val parsedTime = parseDuration(time)
+    //val ingredients = json.optJSONArray("recipeIngredient")?.join(", ") ?: "N/A"
+    val ingredients = json.optJSONArray("recipeIngredient")?.let {
+        // Convert the JSONArray to a List of Strings
+        List(it.length()) { index -> it.getString(index) }
+    } ?: listOf("Ingredients Unavailable")
+
+    return RecipePreview(title, imageUrl, author, rating, reviews, parsedTime, ingredients, url)
+}
+
+// Fallback method to scrape if structured data is not found
+fun fallbackScrapeRecipe(doc: Document, url: String): RecipePreview {
+    val title = doc.select("meta[property=og:title]").attr("content").ifBlank { doc.title() }
+    val image = doc.select("meta[property=og:image]").attr("content")
+    val author = doc.select("meta[name=author]").attr("content").ifBlank { "Unknown" }
+    val rating = doc.select("span[itemprop=ratingValue]").text().toDoubleOrNull()
+    val reviews = doc.select("span[itemprop=reviewCount]").text().toIntOrNull()
+    val time = doc.select("meta[itemprop=cookTime]").attr("content").ifBlank { "Unknown" }
+    val parsedTime = parseDuration(time)
+    //val ingredients = doc.select("ul.recipe-ingredients li").joinToString(", ") { it.text() }
+    val ingredients = doc.select("ul.recipe-ingredients li")
+        .map { it.text() }
+        .takeIf { it.isNotEmpty() } ?: listOf("Ingredients Unavailable")
+
+    return RecipePreview(title, image, author, rating, reviews, parsedTime, ingredients, url)
+}
+
 // Helper function to parse the recipe JSON data and return the RecipePreview
+/*
 fun parseRecipeJson(recipeJson: JSONObject, url: String): RecipePreview {
     val rawTitle = recipeJson.optString("name", "Unknown Recipe")
     val title = Html.fromHtml(rawTitle, Html.FROM_HTML_MODE_LEGACY).toString()
@@ -140,7 +177,7 @@ fun parseRecipeJson(recipeJson: JSONObject, url: String): RecipePreview {
         url = url
     )
 }
-
+*/
 fun parseDuration(duration: String): String {
     val pattern = Pattern.compile("PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?")
     val matcher = pattern.matcher(duration)

@@ -25,6 +25,8 @@ import com.example.ezeats.UserDataDao
 
 @Composable
 fun HomeScreen(navController: NavController) {
+
+
     BackHandler(enabled = true) {
         // Do nothing, back is disabled
     }
