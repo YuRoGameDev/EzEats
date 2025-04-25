@@ -17,6 +17,8 @@ import org.jsoup.Jsoup
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 
 // Function to search for recipes and fetch the top 10 URLs
 suspend fun searchRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> = withContext(Dispatchers.IO) {
@@ -140,6 +142,9 @@ fun SearchScreen() {
     var isLoading by remember { mutableStateOf(false) }
     var recipes by remember { mutableStateOf<List<RecipePreview>>(emptyList()) }
     var selectedRecipe by remember { mutableStateOf<RecipePreview?>(null) }
+    var activeFilters by remember { mutableStateOf(setOf<RecipeFilter>()) }
+
+    val filteredRecipes = filterAndSortRecipes(recipes, activeFilters)
 
     // Display RecipeWebView when a recipe is selected
     if (selectedRecipe != null) {
@@ -159,6 +164,26 @@ fun SearchScreen() {
                 label = { Text("Search Recipes (e.g. Cookies)") },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(RecipeFilter.values()) { filter ->
+                    FilterChip(
+                        selected = activeFilters.contains(filter),
+                        onClick = {
+                            activeFilters = if (filter in activeFilters)
+                                activeFilters - filter
+                            else
+                                activeFilters + filter
+                        },
+                        label = { Text(filter.label) }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -186,17 +211,20 @@ fun SearchScreen() {
 
             when {
                 isLoading -> CircularProgressIndicator()
-                recipes.isNotEmpty() -> {
+                filteredRecipes.isNotEmpty() -> {
                     LazyColumn {
-                        items(recipes) { recipe ->
-                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it},
+                        items(filteredRecipes) { recipe ->
+                            RecipePreviewCard(
+                                recipe,
+                                onViewClicked = { selectedRecipe = it },
                                 onBookmarkClicked = {
-                                    if(DatabaseProvider.isBookmarked(it)){
+                                    if (DatabaseProvider.isBookmarked(it)) {
                                         DatabaseProvider.removeBookmark(it)
-                                    }else {
+                                    } else {
                                         DatabaseProvider.addBookmark(it)
                                     }
-                                })
+                                }
+                            )
                         }
                     }
                 }
@@ -204,3 +232,5 @@ fun SearchScreen() {
         }
     }
 }
+
+

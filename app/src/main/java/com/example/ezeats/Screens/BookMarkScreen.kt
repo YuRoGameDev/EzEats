@@ -3,9 +3,12 @@ package com.example.ezeats.Screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,10 +20,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.recipe.RecipeFilter
 import com.example.ezeats.recipe.RecipePreview
 import com.example.ezeats.recipe.RecipePreviewCard
 import com.example.ezeats.recipe.RecipeWebView
 import com.example.ezeats.recipe.fetchRecipePreviews
+import com.example.ezeats.recipe.filterAndSortRecipes
 import kotlinx.coroutines.launch
 
 
@@ -33,7 +38,9 @@ fun BookMarkScreen() {
     var selectedRecipe by remember { mutableStateOf<RecipePreview?>(null) }
     var bookmarkedUrls by remember { mutableStateOf(DatabaseProvider.getBookmarkedUrls()) }
     var refreshTrigger by remember {  mutableStateOf(0) }
-
+    var activeFilters by remember { mutableStateOf(setOf<RecipeFilter>()) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredRecipes = filterAndSortRecipes(recipes, activeFilters)
 
     print(bookmarkedUrls)
     LaunchedEffect(refreshTrigger) {
@@ -54,26 +61,59 @@ fun BookMarkScreen() {
             onBack = { selectedRecipe = null }
         )
     } else {
+
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
 
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(RecipeFilter.values()) { filter ->
+                    FilterChip(
+                        selected = activeFilters.contains(filter),
+                        onClick = {
+                            activeFilters = if (filter in activeFilters)
+                                activeFilters - filter
+                            else
+                                activeFilters + filter
+                        },
+                        label = { Text(filter.label) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Filter by Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            val searchedRecipes = filteredRecipes.filter { it.title.contains(searchQuery, ignoreCase = true) }
+
             when {
                 isLoading -> CircularProgressIndicator()
-                recipes.isNotEmpty() -> {
+                searchedRecipes.isNotEmpty() -> {
                     LazyColumn {
-                        items(recipes) { recipe ->
-                            RecipePreviewCard(recipe, onViewClicked = {selectedRecipe = it},
+                        items(searchedRecipes) { recipe ->
+                            RecipePreviewCard(
+                                recipe,
+                                onViewClicked = { selectedRecipe = it },
                                 onBookmarkClicked = {
-                                    if(DatabaseProvider.isBookmarked(it)){
+                                    if (DatabaseProvider.isBookmarked(it)) {
                                         DatabaseProvider.removeBookmark(it)
-                                    }else{
+                                    } else {
                                         DatabaseProvider.addBookmark(it)
                                     }
-
-                                })
+                                }
+                            )
                         }
                     }
                 }

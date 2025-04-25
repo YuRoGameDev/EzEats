@@ -99,9 +99,13 @@ fun extractRecipeJson(doc: Document): JSONObject? {
 // Parse the structured JSON to RecipePreview
 fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
     val title = json.optString("name")
-    val imageUrl = json.optString("image")
+    val imageUrl = json.optString("image").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
     val author = json.optString("author")
-    val rating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
+
+    //val rating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
+    val rawRating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
+    val rating = rawRating?.takeIf { !it.isNaN() }
+
     val reviews = json.optJSONObject("aggregateRating")?.optInt("reviewCount")
     val time = json.optString("cookTime")
     val parsedTime = parseDuration(time)
@@ -117,9 +121,13 @@ fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
 // Fallback method to scrape if structured data is not found
 fun fallbackScrapeRecipe(doc: Document, url: String): RecipePreview {
     val title = doc.select("meta[property=og:title]").attr("content").ifBlank { doc.title() }
-    val image = doc.select("meta[property=og:image]").attr("content")
+    val image = doc.select("meta[property=og:image]").attr("content").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
     val author = doc.select("meta[name=author]").attr("content").ifBlank { "Unknown" }
-    val rating = doc.select("span[itemprop=ratingValue]").text().toDoubleOrNull()
+
+    //val rating = doc.select("span[itemprop=ratingValue]").text().toDoubleOrNull()
+    val rawRating = doc.select("span[itemprop=ratingValue]").text().toDoubleOrNull()
+    val rating = rawRating?.takeIf { !it.isNaN() }
+
     val reviews = doc.select("span[itemprop=reviewCount]").text().toIntOrNull()
     val time = doc.select("meta[itemprop=cookTime]").attr("content").ifBlank { "Unknown" }
     val parsedTime = parseDuration(time)
@@ -200,9 +208,9 @@ fun parseDuration(duration: String): String {
 
         // Return the formatted time, or "N/A" if nothing was matched
         timeParts.joinToString(" ") { it }
-            .takeIf { it.isNotEmpty() } ?: "N/A"
+            .takeIf { it.isNotEmpty() } ?: "30m+"
     } else {
-        "N/A"
+        "30m+"
     }
 }
 
