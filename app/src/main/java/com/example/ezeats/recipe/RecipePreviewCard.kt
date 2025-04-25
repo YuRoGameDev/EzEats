@@ -32,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.R
 
 @Composable
 fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> Unit, onBookmarkClicked: (String) -> Unit) {
@@ -55,7 +57,10 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
-            val imagePainter = rememberAsyncImagePainter(imageUrl)
+            val imagePainter = rememberAsyncImagePainter(
+                model = imageUrl,
+                placeholder = painterResource(R.drawable.placeholder),
+                error = painterResource(R.drawable.placeholder),)
             val imageState = imagePainter.state
 
             Box(

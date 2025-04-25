@@ -1,11 +1,11 @@
 package com.example.ezeats.recipe
 
 enum class RecipeFilter(val label: String) {
-    GLUTEN_FREE("Gluten-Free"),
-    DAIRY_FREE("Dairy-Free"),
-    NUT_FREE("No Nuts"),
     HIGH_RATING("Top Rated"),
-    QUICK("Under 30 Min")
+    QUICK("Under 30 Min"),
+    NUT_FREE("No Nuts"),
+    DAIRY_FREE("Dairy-Free"),
+    GLUTEN_FREE("Gluten-Free"),
 }
 
 fun filterAndSortRecipes(
@@ -21,6 +21,7 @@ fun filterAndSortRecipes(
             val containsGluten = recipe.ingredients.any { it.contains("gluten", ignoreCase = true) } ||
                     titleLower.contains("gluten")
             match = match && !containsGluten
+            println("After Gluten-Free filter: ${if (containsGluten) "Excluded" else "Included"} recipe: ${recipe.title}")
         }
 
         if (RecipeFilter.DAIRY_FREE in activeFilters) {
@@ -29,6 +30,7 @@ fun filterAndSortRecipes(
                 dairyKeywords.any { dairy -> ingredient.contains(dairy, ignoreCase = true) }
             } || dairyKeywords.any { titleLower.contains(it) }
             match = match && !containsDairy
+            println("After Dairy-Free filter: ${if (containsDairy) "Excluded" else "Included"} recipe: ${recipe.title}")
         }
 
         if (RecipeFilter.NUT_FREE in activeFilters) {
@@ -37,18 +39,26 @@ fun filterAndSortRecipes(
                 nutKeywords.any { nut -> ingredient.contains(nut, ignoreCase = true) }
             } || nutKeywords.any { titleLower.contains(it) }
             match = match && !containsNuts
+            println("After Nut-Free filter: ${if (containsNuts) "Excluded" else "Included"} recipe: ${recipe.title}")
         }
 
         if (RecipeFilter.QUICK in activeFilters) {
-            val timeRegex = Regex("""\d+""")
-            val minutes = timeRegex.find(recipe.time)?.value?.toIntOrNull() ?: Int.MAX_VALUE
-            match = match && minutes <= 30
+            val time = recipe.time
+            val number = time.replace(Regex("[^0-9]"), "").toInt()
+
+            match = match && number < 30
+            println("After Quick filter (<= 30 mins): ${if (number <= 30) "Included" else "Excluded"} recipe: ${recipe.title}")
         }
 
         match
     }.let { filtered ->
+        // Print count after applying all filters
+        println("Recipes after filtering: ${filtered.size} out of ${recipes.size} total")
+
         if (RecipeFilter.HIGH_RATING in activeFilters) {
-            filtered.sortedByDescending { it.rating ?: 0.0 }
+            val sorted = filtered.sortedByDescending { it.rating ?: 0.0 }
+            println("After High Rating filter: ${sorted.size} recipes with high ratings")
+            sorted
         } else {
             filtered
         }

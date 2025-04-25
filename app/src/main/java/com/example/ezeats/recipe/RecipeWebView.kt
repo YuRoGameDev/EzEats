@@ -11,6 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,8 +38,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.R
 
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -46,6 +53,8 @@ fun RecipeWebView(
 ) {
     var webView: WebView? = remember { null }
     var isBookmarked by remember { mutableStateOf(DatabaseProvider.isBookmarked(url)) }
+    var isWebViewVisible by remember { mutableStateOf(false) }
+
     BackHandler {
         if (webView?.canGoBack() == true) {
             webView?.goBack()
@@ -56,52 +65,65 @@ fun RecipeWebView(
 
     val context = LocalContext.current
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { context ->
-                WebView(context).apply {
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldInterceptRequest(
-                            view: WebView?,
-                            request: WebResourceRequest
-                        ): WebResourceResponse? {
-                            val reqUrl = request.url.toString().lowercase(Locale.ROOT)
-                            return if (
-                                reqUrl.contains("doubleclick") ||
-                                reqUrl.contains("ads.") ||
-                                reqUrl.contains("googlesyndication") ||
-                                reqUrl.contains("adservice")
-                            ) {
-                                WebResourceResponse("text/plain", "utf-8", null)
-                            } else {
-                                super.shouldInterceptRequest(view, request)
+    LaunchedEffect(key1 = url) {
+        isWebViewVisible = true // Make WebView visible when launched
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+    ) {
+
+        AnimatedVisibility(
+            visible = isWebViewVisible,
+            enter = slideInVertically(initialOffsetY = { it }), // Slide in from bottom
+            exit = slideOutVertically(targetOffsetY = { it }) // Optionally slide out
+        ) {
+            AndroidView(
+                factory = { context ->
+                    WebView(context).apply {
+                        webViewClient = object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView?,
+                                request: WebResourceRequest
+                            ): WebResourceResponse? {
+                                val reqUrl = request.url.toString().lowercase(Locale.ROOT)
+                                return if (
+                                    reqUrl.contains("doubleclick") ||
+                                    reqUrl.contains("ads.") ||
+                                    reqUrl.contains("googlesyndication") ||
+                                    reqUrl.contains("adservice")
+                                ) {
+                                    WebResourceResponse("text/plain", "utf-8", null)
+                                } else {
+                                    super.shouldInterceptRequest(view, request)
+                                }
+                            }
+
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest
+                            ): Boolean {
+                                view?.loadUrl(request.url.toString())
+                                return true
                             }
                         }
 
-                        override fun shouldOverrideUrlLoading(
-                            view: WebView?,
-                            request: WebResourceRequest
-                        ): Boolean {
-                            view?.loadUrl(request.url.toString())
-                            return true
-                        }
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.setSupportMultipleWindows(false)
+                        settings.javaScriptCanOpenWindowsAutomatically = false
+
+                        loadUrl(url)
+                        webView = this
                     }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
 
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.setSupportMultipleWindows(false)
-                    settings.javaScriptCanOpenWindowsAutomatically = false
-
-                    loadUrl(url)
-                    webView = this
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
 
         // Close button (Top-left)
 
-
+        }
         // Bookmark + Share buttons (Top-right)
         Column(
             modifier = Modifier
@@ -120,42 +142,45 @@ fun RecipeWebView(
                     isBookmarked = !isBookmarked
                 },
                 modifier = Modifier
-                    .background(Color.Black, shape = CircleShape)
+                    .background(Color(0xBF9dc484), shape = CircleShape)
                     .size(50.dp)
             ) {
-                Icon(
-                    imageVector = if(isBookmarked) Icons.Default.Share else Icons.Default.Close,
+                Image(
+                    painter = painterResource(id = if (isBookmarked) R.drawable.bookmarked else R.drawable.bookmark_none),
                     contentDescription = "Bookmark",
-                    tint = Color.White
+                    modifier = Modifier.size(42.dp), // Adjust size as needed
+
                 )
             }
             IconButton(
                 onClick = { shareRecipe(context,url) },
                 modifier = Modifier
-                    .background(Color.Black, shape = CircleShape)
+                    .background(Color(0xBF9dc484), shape = CircleShape)
                     .size(50.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "Share",
-                    tint = Color.White
+                    tint = Color.Black,
+                    modifier = Modifier.size(28.dp)
                 )
             }
             IconButton(
                 onClick = { onBack() },
                 modifier = Modifier
-                    .background(Color.Black, shape = CircleShape)
+                    .background(Color(0xBF9dc484), shape = CircleShape)
                     .size(50.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Close",
-                    tint = Color.White
+                    tint = Color.Black,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
-    }
 
+    }
 }
 
 

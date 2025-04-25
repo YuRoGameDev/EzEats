@@ -171,7 +171,7 @@ fun SearchScreen() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(RecipeFilter.values()) { filter ->
+                items(RecipeFilter.entries.toTypedArray()) { filter ->
                     FilterChip(
                         selected = activeFilters.contains(filter),
                         onClick = {

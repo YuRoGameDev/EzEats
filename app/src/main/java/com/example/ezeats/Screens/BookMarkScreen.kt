@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -27,8 +29,11 @@ import com.example.ezeats.recipe.RecipeWebView
 import com.example.ezeats.recipe.fetchRecipePreviews
 import com.example.ezeats.recipe.filterAndSortRecipes
 import kotlinx.coroutines.launch
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
-
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun BookMarkScreen() {
     BackHandler(enabled = true) {}
@@ -41,6 +46,7 @@ fun BookMarkScreen() {
     var activeFilters by remember { mutableStateOf(setOf<RecipeFilter>()) }
     var searchQuery by remember { mutableStateOf("") }
     val filteredRecipes = filterAndSortRecipes(recipes, activeFilters)
+    val refreshing = remember { mutableStateOf(false) }
 
     print(bookmarkedUrls)
     LaunchedEffect(refreshTrigger) {
@@ -51,6 +57,7 @@ fun BookMarkScreen() {
             // Fetch the previews for each recipe URL
             recipes = fetchRecipePreviews(bookmarkedUrls)
             isLoading = false
+            refreshing.value = true
         }
     }
 
@@ -61,64 +68,76 @@ fun BookMarkScreen() {
             onBack = { selectedRecipe = null }
         )
     } else {
+        val refreshState = rememberPullRefreshState(
+            refreshing = refreshing.value,
+            onRefresh = {
+                // When refreshing, trigger the refresh logic
+                refreshing.value = true
+                refreshTrigger++  // This triggers the LaunchedEffect to re-fetch the data
+            },
+            refreshThreshold = 0.5.dp // The threshold for triggering the refresh when pulling (adjustable)
+        )
 
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    .pullRefresh(refreshState)
             ) {
-                items(RecipeFilter.values()) { filter ->
-                    FilterChip(
-                        selected = activeFilters.contains(filter),
-                        onClick = {
-                            activeFilters = if (filter in activeFilters)
-                                activeFilters - filter
-                            else
-                                activeFilters + filter
-                        },
-                        label = { Text(filter.label) }
-                    )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(RecipeFilter.entries.toTypedArray()) { filter ->
+                        FilterChip(
+                            selected = activeFilters.contains(filter),
+                            onClick = {
+                                activeFilters = if (filter in activeFilters)
+                                    activeFilters - filter
+                                else
+                                    activeFilters + filter
+                            },
+                            label = { Text(filter.label) }
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Filter by Title") },
-                modifier = Modifier.fillMaxWidth()
-            )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Filter by Title") },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            val searchedRecipes = filteredRecipes.filter { it.title.contains(searchQuery, ignoreCase = true) }
+                Spacer(modifier = Modifier.height(24.dp))
 
-            when {
-                isLoading -> CircularProgressIndicator()
-                searchedRecipes.isNotEmpty() -> {
-                    LazyColumn {
-                        items(searchedRecipes) { recipe ->
-                            RecipePreviewCard(
-                                recipe,
-                                onViewClicked = { selectedRecipe = it },
-                                onBookmarkClicked = {
-                                    if (DatabaseProvider.isBookmarked(it)) {
-                                        DatabaseProvider.removeBookmark(it)
-                                    } else {
-                                        DatabaseProvider.addBookmark(it)
+                val searchedRecipes =
+                    filteredRecipes.filter { it.title.contains(searchQuery, ignoreCase = true) }
+
+                when {
+                    isLoading -> CircularProgressIndicator()
+                    searchedRecipes.isNotEmpty() -> {
+                        LazyColumn {
+                            items(searchedRecipes) { recipe ->
+                                RecipePreviewCard(
+                                    recipe,
+                                    onViewClicked = { selectedRecipe = it },
+                                    onBookmarkClicked = {
+                                        if (DatabaseProvider.isBookmarked(it)) {
+                                            DatabaseProvider.removeBookmark(it)
+                                        } else {
+                                            DatabaseProvider.addBookmark(it)
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
-            }
-
+                /*
             Button(onClick = {
                 val newBookmark = "https://www.halfbakedharvest.com/giant-chocolate-chip-cookie-cookie-dough-peanut-butter-cups/"
                 // Call addBookmark to add a new URL
@@ -135,7 +154,9 @@ fun BookMarkScreen() {
                 Text("Remove Bookmark")
             }
         }
-    }
+        */
 
+        }
+    }
 
 }
