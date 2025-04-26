@@ -1,4 +1,5 @@
 package com.example.ezeats.Screens
+import android.content.res.Configuration
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.BackHandler
@@ -8,7 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.recipe.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers
@@ -19,8 +20,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.ChipDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.Alignment
@@ -29,10 +28,11 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-
+import kotlin.collections.plus
 
 
 // Composable function to display the search screen
@@ -51,172 +51,284 @@ fun SearchScreen() {
 
     val filteredRecipes = filterAndSortRecipes(recipes, activeFilters)
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     if (selectedRecipe != null) {
         RecipeWebView(
             url = selectedRecipe!!.url,
             onBack = { selectedRecipe = null }
         )
     } else {
-        Column(modifier = Modifier.fillMaxSize()) {
+        if (isLandscape) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                HeaderSection(
+                    searchTerm = searchTerm,
+                    onSearchTermChange = { searchTerm = it },
+                    onSearchClicked = {
+                        coroutineScope.launch {
+                            isLoading = true
+                            recipes = emptyList()
 
-            // Header with green background
+                            val urls = searchRecipesWithFallback(searchTerm, 25, 10000)
+                            recipes = fetchRecipePreviews(urls)
+                            isLoading = false
+                        }
+                    },
+                    activeFilters = activeFilters,
+                    onFilterClicked = {
+                        activeFilters = if (it in activeFilters)
+                            activeFilters - it
+                        else
+                            activeFilters + it
+                    },
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(350.dp)
+                )
+
+                RecipeSection(
+                    isLoading = isLoading,
+                    recipes = recipes,
+                    filteredRecipes = filteredRecipes,
+                    searchTerm = searchTerm,
+                    searched = searched,
+                    onRecipeClicked = { selectedRecipe = it }
+                )
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                HeaderSection(
+                    searchTerm = searchTerm,
+                    onSearchTermChange = { searchTerm = it },
+                    onSearchClicked = {
+                        coroutineScope.launch {
+                            isLoading = true
+                            recipes = emptyList()
+
+                            val urls = searchRecipesWithFallback(searchTerm, 25, 10000)
+                            recipes = fetchRecipePreviews(urls)
+                            isLoading = false
+                        }
+                    },
+                    activeFilters = activeFilters,
+                    onFilterClicked = {
+                        activeFilters = if (it in activeFilters)
+                            activeFilters - it
+                        else
+                            activeFilters + it
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(Modifier.widthIn(max = 400.dp))
+                )
+
+                RecipeSection(
+                    isLoading = isLoading,
+                    recipes = recipes,
+                    filteredRecipes = filteredRecipes,
+                    searchTerm = searchTerm,
+                    searched = searched,
+                    onRecipeClicked = { selectedRecipe = it }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HeaderSection(
+    searchTerm: String,
+    onSearchTermChange: (String) -> Unit,
+    onSearchClicked: () -> Unit,
+    activeFilters: Set<RecipeFilter>,
+    onFilterClicked: (RecipeFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val darkGreen = Color(0xFF49891a)
+
+    Column(
+        modifier = modifier
+            .background(Color(0xFF9dc484)) // Light green
+            .padding(16.dp)
+    ) {
+        // Search bar + Button
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .height(IntrinsicSize.Min)
+                .fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = searchTerm,
+                onValueChange = { newValue ->
+                    if (newValue.length <= 45) {
+                        onSearchTermChange(newValue)
+                    }
+                },
+                label = { Text("Search for some Recipes!") },
+                modifier = Modifier.weight(1f),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = darkGreen,
+                    unfocusedIndicatorColor = darkGreen,
+                    focusedLabelColor = Color.Black,
+                    unfocusedLabelColor = Color.Black,
+                    cursorColor = darkGreen,
+                    disabledIndicatorColor = Color.Gray
+                ),
+                textStyle = TextStyle(
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            )
+
+            Button(
+                onClick = { onSearchClicked() },
+                enabled = searchTerm.isNotBlank(),
+                modifier = Modifier.fillMaxHeight(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = darkGreen,
+                    contentColor = Color.Black
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        // Filters
+        if (isLandscape) {
+            val chipRows = RecipeFilter.entries.chunked(2) // Break into rows with 2 items each
+
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF9dc484)) // Light green
-                    .padding(16.dp)
-
+                    .fillMaxHeight()
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                val darkGreen = Color(0xFF49891a)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .height(IntrinsicSize.Min)
-                        .fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = searchTerm,
-                        onValueChange = { newValue ->
-                            // Limit text to 100 characters
-                            if (newValue.length <= 45) {
-                                searchTerm = newValue
-                            }
-                        },
-                        label = { Text("Search Recipes (e.g. Cookies)") },
-                        modifier = Modifier.weight(1f),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = darkGreen,
-                            unfocusedIndicatorColor = darkGreen,
-                            focusedLabelColor = Color.Black,
-                            unfocusedLabelColor = Color.Black,
-                            cursorColor = darkGreen,
-                            disabledIndicatorColor = Color.Gray
-                        ),
-                        textStyle = TextStyle(
-                            color = Color.Black, // Set the text color here
-                            fontWeight = FontWeight.Bold, // Font weight
-                            fontSize = 18.sp // Adjust the font size
-                        )
-                    )
-
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                isLoading = true
-                                recipes = emptyList()
-
-                                val urls = searchRecipesWithFallback(searchTerm, 25, 10000)
-                                recipes = fetchRecipePreviews(urls)
-                                isLoading = false
-                            }
-                        },
-                        enabled = searchTerm.isNotBlank(),
-                        modifier = Modifier.fillMaxHeight(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = darkGreen,  // For background color
-                            contentColor = Color.Black   // For icon and text color
-                        )
+                chipRows.forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            modifier = Modifier.size(32.dp), // Adjust size as needed
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(RecipeFilter.entries.toTypedArray()) { filter ->
-                        FilterChip(
-                            selected = activeFilters.contains(filter),
-                            onClick = {
-                                activeFilters = if (filter in activeFilters)
-                                    activeFilters - filter
-                                else
-                                    activeFilters + filter
-                            },
-                            label = { Text(filter.label) },
-                            modifier = Modifier.height(50.dp), // Set the height of the chip
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color.Transparent, // Background color for the chip
-                                labelColor = Color.Black,   // Text color inside the chip
-                                selectedContainerColor = darkGreen, // Keep the selected background color dark green
-                                selectedLabelColor = Color.White
-
+                        row.forEach { filter ->
+                            FilterChip(
+                                selected = activeFilters.contains(filter),
+                                onClick = { onFilterClicked(filter) },
+                                label = { Text(filter.label) },
+                                modifier = Modifier
+                                    .height(50.dp)
+                                    .weight(1f), // Distribute evenly within the row
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color.Transparent,
+                                    labelColor = Color.Black,
+                                    selectedContainerColor = darkGreen,
+                                    selectedLabelColor = Color.White
+                                )
                             )
-                        )
+                        }
+
+                        // Fill empty space if there's an odd number of filters
+                        if (row.size < 2) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            when {
-                isLoading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                recipes.isEmpty() && !searched -> {
-                    // Initial state
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Search to find some recipes!", color = Color.Black, fontSize = 30.sp)
-                    }
-                }
-                recipes.isEmpty() && searchTerm.isNotBlank() && searched -> {
-                    // After searching, no results
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No results found", color = Color.Black, fontSize = 30.sp)
-                    }
-                }
-                filteredRecipes.isNotEmpty() -> {
-                    // Show filtered results
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filteredRecipes) { recipe ->
-                            RecipePreviewCard(
-                                recipe,
-                                onViewClicked = { selectedRecipe = it },
-                                onBookmarkClicked = {
-                                    if (DatabaseProvider.isBookmarked(it)) {
-                                        DatabaseProvider.removeBookmark(it)
-                                    } else {
-                                        DatabaseProvider.addBookmark(it)
-                                    }
-                                }
-                            )
-                        }
-                    }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(RecipeFilter.entries.toTypedArray()) { filter ->
+                    FilterChip(
+                        selected = activeFilters.contains(filter),
+                        onClick = { onFilterClicked(filter) },
+                        label = { Text(filter.label) },
+                        modifier = Modifier.height(50.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.Transparent,
+                            labelColor = Color.Black,
+                            selectedContainerColor = darkGreen,
+                            selectedLabelColor = Color.White
+                        )
+                    )
                 }
             }
         }
     }
 }
 
+@Composable
+fun RecipeSection(
+    isLoading: Boolean,
+    recipes: List<RecipePreview>,
+    filteredRecipes: List<RecipePreview>,
+    searchTerm: String,
+    searched: Boolean,
+    onRecipeClicked: (RecipePreview) -> Unit,
+) {
+    Spacer(modifier = Modifier.height(16.dp))
+
+    when {
+        isLoading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        recipes.isEmpty() && !searched -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Search to find some recipes!", color = Color.Black, fontSize = 30.sp)
+            }
+        }
+        recipes.isEmpty() && searchTerm.isNotBlank() && searched -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No results found", color = Color.Black, fontSize = 30.sp)
+            }
+        }
+        filteredRecipes.isNotEmpty() -> {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(filteredRecipes) { recipe ->
+                    RecipePreviewCard(
+                        recipe,
+                        onViewClicked = { onRecipeClicked(recipe) },
+                        onBookmarkClicked = {
+                            if (DatabaseProvider.isBookmarked(it)) {
+                                DatabaseProvider.removeBookmark(it)
+                            } else {
+                                DatabaseProvider.addBookmark(it)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
 
 suspend fun searchRecipesWithFallback(searchTerm: String, numResults: Int, maxResults: Long): List<String> {
     return try {

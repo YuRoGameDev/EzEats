@@ -1,4 +1,4 @@
-package com.example.ezeats
+package com.example.ezeats.storage
 
 import androidx.room.Dao
 import androidx.room.Database
@@ -6,7 +6,6 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import androidx.room.Update
 
 @Database(entities = [UserData::class], version = 1)
 @TypeConverters(StringListConverter::class)

@@ -38,10 +38,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.R
 
 

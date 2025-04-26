@@ -1,7 +1,6 @@
 package com.example.ezeats.Screens
 
 import android.content.res.Configuration
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -20,10 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
-import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.Screen
 import com.example.ezeats.R
 
@@ -40,10 +38,9 @@ fun HomeScreen(navController: NavController) {
 
     val isLoggedIn = remember { mutableStateOf(false) }
     LaunchedEffect(true) {
-        val status = DatabaseProvider.db.userDataDao().isUserLoggedIn()
+        val status = DatabaseProvider.isLoggedIn
         isLoggedIn.value = status
         println("Is Logged in?:" + status)
-        //DatabaseProvider.db.userDataDao().updateBookmarkedUrls(listOf("https://www.halfbakedharvest.com/giant-chocolate-chip-cookie-cookie-dough-peanut-butter-cups/"))
     }
 
     Column(

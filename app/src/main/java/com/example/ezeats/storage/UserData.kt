@@ -1,4 +1,4 @@
-package com.example.ezeats
+package com.example.ezeats.storage
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

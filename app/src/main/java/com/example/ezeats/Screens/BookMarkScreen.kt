@@ -1,5 +1,6 @@
 package com.example.ezeats.Screens
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,7 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.pullrefresh.PullRefreshState
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,7 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.recipe.RecipeFilter
 import com.example.ezeats.recipe.RecipePreview
 import com.example.ezeats.recipe.RecipePreviewCard
@@ -33,8 +34,6 @@ import com.example.ezeats.recipe.RecipeWebView
 import com.example.ezeats.recipe.fetchRecipePreviews
 import com.example.ezeats.recipe.filterAndSortRecipes
 import kotlinx.coroutines.launch
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChipDefaults
@@ -42,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +61,9 @@ fun BookMarkScreen() {
     var searchQuery by remember { mutableStateOf("") }
     val filteredRecipes = filterAndSortRecipes(recipes, activeFilters)
     val refreshing = remember { mutableStateOf(false) }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     print(bookmarkedUrls)
     LaunchedEffect(refreshTrigger) {
@@ -91,185 +94,274 @@ fun BookMarkScreen() {
             },
             refreshThreshold = 100.dp // The threshold for triggering the refresh when pulling (adjustable)
         )
-        Column(modifier = Modifier.fillMaxSize()) {
+        if (isLandscape) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                BookmarkHeaderSection(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    onRefreshClicked = { refreshTrigger++ },
+                    activeFilters = activeFilters,
+                    onFilterClicked = { filter ->
+                        activeFilters = if (filter in activeFilters)
+                            activeFilters - filter
+                        else
+                            activeFilters + filter
+                    },
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(350.dp)
+                )
+
+                BookmarkRecipeSection(
+                    isLoading = isLoading,
+                    recipes = recipes,
+                    filteredRecipes = filteredRecipes,
+                    searchQuery = searchQuery,
+                    selectedRecipe = { selectedRecipe = it },
+                    refreshState = refreshState
+                )
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxSize()) {
+                BookmarkHeaderSection(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    onRefreshClicked = { refreshTrigger++ },
+                    activeFilters = activeFilters,
+                    onFilterClicked = { filter ->
+                        activeFilters = if (filter in activeFilters)
+                            activeFilters - filter
+                        else
+                            activeFilters + filter
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(Modifier.widthIn(max = 400.dp))
+                )
+
+                BookmarkRecipeSection(
+                    isLoading = isLoading,
+                    recipes = recipes,
+                    filteredRecipes = filteredRecipes,
+                    searchQuery = searchQuery,
+                    selectedRecipe = { selectedRecipe = it },
+                    refreshState = refreshState
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+fun BookmarkHeaderSection(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onRefreshClicked: () -> Unit,
+    activeFilters: Set<RecipeFilter>,
+    onFilterClicked: (RecipeFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val darkGreen = Color(0xFF49891a)
+
+    Column(
+        modifier = modifier
+            .background(Color(0xFF9dc484)) // Light green
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .height(IntrinsicSize.Min)
+                .fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { newValue ->
+                    if (newValue.length <= 45) {
+                        onSearchQueryChange(newValue)
+                    }
+                },
+                label = { Text("Filter by Title") },
+                modifier = Modifier.weight(1f),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = darkGreen,
+                    unfocusedIndicatorColor = darkGreen,
+                    focusedLabelColor = Color.Black,
+                    unfocusedLabelColor = Color.Black,
+                    cursorColor = darkGreen
+                ),
+                textStyle = TextStyle(
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            )
+
+            Button(
+                onClick = onRefreshClicked,
+                modifier = Modifier.fillMaxHeight(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = darkGreen,
+                    contentColor = Color.Black
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        // Filters
+        if (isLandscape) {
+            val chipRows = RecipeFilter.entries.chunked(2) // Break into rows with 2 items each
+
             Column(
                 modifier = Modifier
-                    .background(Color(0xFF9dc484)) // First: full-width background
-                    .fillMaxWidth()
-                    .padding(16.dp) // Then: inner spacing for content
+                    .fillMaxHeight()
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                val darkGreen = Color(0xFF49891a)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .height(IntrinsicSize.Min)
-                        .fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { newValue ->
-                            // Limit text to 100 characters
-                            if (newValue.length <= 45) {
-                                searchQuery = newValue
-                            }
-                        },
-                        label = { Text("Filter by Title") },
-                        modifier = Modifier.weight(1f),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = darkGreen,
-                            unfocusedIndicatorColor = darkGreen,
-                            focusedLabelColor = Color.Black,
-                            unfocusedLabelColor = Color.Black,
-                            cursorColor = darkGreen,
-                            disabledIndicatorColor = Color.Gray
-                        ),
-                        textStyle = TextStyle(
-                            color = Color.Black, // Set the text color here
-                            fontWeight = FontWeight.Bold, // Font weight
-                            fontSize = 18.sp // Adjust the font size
+                chipRows.forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        row.forEach { filter ->
+                            FilterChip(
+                                selected = activeFilters.contains(filter),
+                                onClick = { onFilterClicked(filter) },
+                                label = { Text(filter.label) },
+                                modifier = Modifier
+                                    .height(50.dp)
+                                    .weight(1f), // Distribute evenly within the row
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color.Transparent,
+                                    labelColor = Color.Black,
+                                    selectedContainerColor = darkGreen,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+
+                        // Fill empty space if there's an odd number of filters
+                        if (row.size < 2) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(RecipeFilter.entries.toTypedArray()) { filter ->
+                    FilterChip(
+                        selected = activeFilters.contains(filter),
+                        onClick = { onFilterClicked(filter) },
+                        label = { Text(filter.label) },
+                        modifier = Modifier.height(50.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color.Transparent,
+                            labelColor = Color.Black,
+                            selectedContainerColor = darkGreen,
+                            selectedLabelColor = Color.White
                         )
                     )
-
-                    Button(
-                        onClick = {
-                            refreshTrigger++
-                        },
-                        enabled = true,
-                        modifier = Modifier.fillMaxHeight(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = darkGreen,  // For background color
-                            contentColor = Color.Black   // For icon and text color
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            modifier = Modifier.size(32.dp), // Adjust size as needed
-                        )
-                    }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(RecipeFilter.entries.toTypedArray()) { filter ->
-                        FilterChip(
-                            selected = activeFilters.contains(filter),
-                            onClick = {
-                                activeFilters = if (filter in activeFilters)
-                                    activeFilters - filter
-                                else
-                                    activeFilters + filter
-                            },
-                            label = { Text(filter.label) },
-                            modifier = Modifier.height(50.dp), // Set the height of the chip
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color.Transparent, // Background color for the chip
-                                labelColor = Color.Black,   // Text color inside the chip
-                                selectedContainerColor = darkGreen, // Keep the selected background color dark green
-                                selectedLabelColor = Color.White
-
-                            )
-                        )
-                    }
-                }
-
-
             }
+        }
+    }
+}
 
-                Spacer(modifier = Modifier.height(16.dp))
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun BookmarkRecipeSection(
+    isLoading: Boolean,
+    recipes: List<RecipePreview>,
+    filteredRecipes: List<RecipePreview>,
+    searchQuery: String,
+    selectedRecipe: (RecipePreview) -> Unit,
+    refreshState: PullRefreshState
+) {
+    val searchedRecipes = filteredRecipes.filter {
+        it.title.contains(searchQuery, ignoreCase = true)
+    }
 
-                val searchedRecipes =
-                    filteredRecipes.filter { it.title.contains(searchQuery, ignoreCase = true) }
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .pullRefresh(refreshState)
-            ) {
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-
-                    recipes.isEmpty() -> {
-                        // Initial state
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = "There's nothing here.\nTry searching for some recipes to bookmark!",
-                                    color = Color.Black,
-                                    fontSize = 30.sp,
-                                    textAlign = TextAlign.Center,
-                                    lineHeight = 40.sp
-                                )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(refreshState)
+    ) {
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            recipes.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "There's nothing here.\nTry searching for some recipes to bookmark!",
+                        color = Color.Black,
+                        fontSize = 30.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 40.sp
+                    )
+                }
+            }
+            searchedRecipes.isEmpty() && (searchQuery.isNotBlank() || filteredRecipes.isEmpty()) -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Nothing found.\nTry searching for some recipes!",
+                        color = Color.Black,
+                        fontSize = 30.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 40.sp
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(searchedRecipes) { recipe ->
+                        RecipePreviewCard(
+                            recipe,
+                            onViewClicked = { selectedRecipe(recipe) },
+                            onBookmarkClicked = {
+                                if (DatabaseProvider.isBookmarked(it)) {
+                                    DatabaseProvider.removeBookmark(it)
+                                } else {
+                                    DatabaseProvider.addBookmark(it)
+                                }
                             }
-                        }
-                    }
-
-                    !recipes.isEmpty() && searchQuery.isNotBlank() -> {
-                        // After searching, no results
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = "Nothing found.\nTry searching for some recipes!",
-                                    color = Color.Black,
-                                    fontSize = 30.sp,
-                                    textAlign = TextAlign.Center,
-                                    lineHeight = 40.sp
-                                )
-                            }
-                        }
-                    }
-
-                    searchedRecipes.isNotEmpty() -> {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-
-                            ) {
-                            items(searchedRecipes) { recipe ->
-                                RecipePreviewCard(
-                                    recipe,
-                                    onViewClicked = { selectedRecipe = it },
-                                    onBookmarkClicked = {
-                                        if (DatabaseProvider.isBookmarked(it)) {
-                                            DatabaseProvider.removeBookmark(it)
-                                        } else {
-                                            DatabaseProvider.addBookmark(it)
-                                        }
-                                    }
-                                )
-                            }
-                        }
+                        )
                     }
                 }
             }
         }
     }
-
 }

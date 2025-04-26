@@ -40,6 +40,13 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/io.netty.versions.properties"
+        }
+    }
 }
 
 
@@ -68,5 +75,10 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.0")
     implementation("androidx.compose.material:material:1.8.0-rc03")
 
+    implementation("software.amazon.awssdk:dynamodb:2.20.86")
+    implementation("software.amazon.awssdk:auth:2.20.86")
+    implementation("software.amazon.awssdk:regions:2.20.86")
+    implementation("software.amazon.awssdk:core:2.20.86")
+    implementation("software.amazon.awssdk:url-connection-client:2.20.86")
 }
 

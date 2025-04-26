@@ -1,20 +1,24 @@
-package com.example.ezeats
+package com.example.ezeats.storage
 
-import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.ezeats.ezeats
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object DatabaseProvider {
 
-    private var bookmarkedUrlsList: MutableList<String> = mutableListOf()
+    var bookmarkedUrlsList: MutableList<String> = mutableListOf()
+    var email: String = ""
+    var password: String = ""
+    var isLoggedIn: Boolean = false
+    val dynamoDBHelper = DynamoDBHelper()
 
     val db: AppDatabase by lazy {
         Room.databaseBuilder(
-            ezeats.context,  // Use your Application context
+            ezeats.Companion.context,  // Use your Application context
             AppDatabase::class.java,
             "user_database"
         ).addCallback(object: RoomDatabase.Callback(){
@@ -48,6 +52,17 @@ object DatabaseProvider {
             val user = db.userDataDao().getBookmarkedUrls()
             val urls = user?.bookmarkedUrls ?: emptyList()
             bookmarkedUrlsList = urls.toMutableList()
+
+            email = db.userDataDao().getEmail()
+            password = db.userDataDao().getPassword()
+            isLoggedIn = db.userDataDao().isUserLoggedIn()
+
+            if(isLoggedIn){
+                val userAws: AWSUserData? = dynamoDBHelper.getUserDataById(email, password)
+                val bookmarkedUrls: List<String> = userAws?.bookmarkedUrls ?: emptyList()
+                bookmarkedUrlsList = bookmarkedUrls.toMutableList()
+                db.userDataDao().updateBookmarkedUrls(bookmarkedUrlsList)
+            }
         }
     }
 
@@ -67,6 +82,10 @@ object DatabaseProvider {
             println(bookmarkedUrlsList)
             CoroutineScope(Dispatchers.IO).launch {
                 db.userDataDao().updateBookmarkedUrls(bookmarkedUrlsList)
+
+                if(isLoggedIn){
+                   dynamoDBHelper.updateBookmarkedUrls(email, bookmarkedUrlsList)
+                }
             }
         }
     }
@@ -79,6 +98,10 @@ object DatabaseProvider {
             println(bookmarkedUrlsList)
             CoroutineScope(Dispatchers.IO).launch {
                 db.userDataDao().updateBookmarkedUrls(bookmarkedUrlsList)
+
+                if(isLoggedIn){
+                    dynamoDBHelper.updateBookmarkedUrls(email, bookmarkedUrlsList)
+                }
             }
         }
     }

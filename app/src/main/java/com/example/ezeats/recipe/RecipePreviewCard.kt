@@ -1,7 +1,7 @@
 package com.example.ezeats.recipe
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -43,7 +41,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
-import com.example.ezeats.DatabaseProvider
+import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.R
 
 @Composable
@@ -56,15 +54,16 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
     val title = recipe.title.takeIf { it.isNotEmpty() } ?: "Title Unavailable"
     val imageUrl = recipe.imageUrl.takeIf { it.isNotEmpty() } ?: defaultImageUrl
     val darkGreen = Color(0xFF49891a)
+    val lightGreen = Color(0xFF9dc484)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min), // Let height be defined by content
         shape = RoundedCornerShape(16.dp),
         colors = CardColors(
-            containerColor = darkGreen,
+            containerColor = lightGreen,
             contentColor = Color.White,
-            disabledContainerColor = darkGreen,
+            disabledContainerColor = lightGreen,
             disabledContentColor = Color.White
         ),
         elevation = CardDefaults.cardElevation(5.dp)
@@ -98,7 +97,8 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
                     contentDescription = recipe.title,
                     modifier = Modifier
                         .fillMaxSize() // This makes the image scale to the container's size
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, Color.Black, RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop // This ensures the aspect ratio is maintained
                 )
             }
@@ -150,7 +150,9 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
                     ) {
                         Icon(
                             imageVector = Icons.Default.Menu, // or any icon you prefer
-                            contentDescription = "View"
+                            contentDescription = "View",
+                            modifier = Modifier.size(52.dp)
+
                         )
                     }
 
@@ -170,7 +172,7 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
                         Image(
                             painter = painterResource(id = if (isBookmarked) R.drawable.bookmarked else R.drawable.bookmark_none),
                             contentDescription = "Bookmark",
-                            modifier = Modifier.size(42.dp), // Adjust size as needed
+                            modifier = Modifier.size(52.dp), // Adjust size as needed
                         )
                     }
                 }
