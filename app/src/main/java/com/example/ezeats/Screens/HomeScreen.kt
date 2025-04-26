@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -47,6 +48,7 @@ fun HomeScreen(navController: NavController) {
 
     Column(
         modifier = Modifier
+            .background(Color.White)
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,

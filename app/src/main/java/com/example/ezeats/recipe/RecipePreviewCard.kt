@@ -1,6 +1,7 @@
 package com.example.ezeats.recipe
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,10 +18,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -48,13 +55,19 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
 
     val title = recipe.title.takeIf { it.isNotEmpty() } ?: "Title Unavailable"
     val imageUrl = recipe.imageUrl.takeIf { it.isNotEmpty() } ?: defaultImageUrl
-
+    val darkGreen = Color(0xFF49891a)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min), // Let height be defined by content
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(8.dp)
+        colors = CardColors(
+            containerColor = darkGreen,
+            contentColor = Color.White,
+            disabledContainerColor = darkGreen,
+            disabledContentColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(5.dp)
     ) {
         Row(modifier = Modifier.padding(16.dp)) {
             val imagePainter = rememberAsyncImagePainter(
@@ -119,25 +132,47 @@ fun RecipePreviewCard(recipe: RecipePreview, onViewClicked: (RecipePreview) -> U
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Button(
-                    onClick = { onViewClicked(recipe) },
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(56.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("View Full Recipe")
-                }
+                    Button(
+                        onClick = { onViewClicked(recipe) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = darkGreen,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Menu, // or any icon you prefer
+                            contentDescription = "View"
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Button(
-                    onClick = {
-                        onBookmarkClicked(recipe.url)
-                        isBookmarked = !isBookmarked
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    Text(if (isBookmarked) "Remove Bookmark" else "Bookmark")
+                    Button(
+                        onClick = {
+                            onBookmarkClicked(recipe.url)
+                            isBookmarked = !isBookmarked
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = darkGreen,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Image(
+                            painter = painterResource(id = if (isBookmarked) R.drawable.bookmarked else R.drawable.bookmark_none),
+                            contentDescription = "Bookmark",
+                            modifier = Modifier.size(42.dp), // Adjust size as needed
+                        )
+                    }
                 }
             }
         }

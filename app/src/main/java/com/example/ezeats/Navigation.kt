@@ -1,8 +1,10 @@
 package com.example.ezeats
 
+import android.content.res.Configuration
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,9 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,33 +56,39 @@ fun MainScreen() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        bottomBar = {
-            if (currentRoute != Screen.Home.route) { // Compare the route string here
-                BottomNavigationBar(navController = navController, isLandscape = isLandscape)
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF9dc484)) // your desired green
+            .systemBarsPadding()           // accounts for status & nav bar
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            bottomBar = {
+                if (currentRoute != Screen.Home.route) { // Compare the route string here
+                    BottomNavigationBar(navController = navController, isLandscape = isLandscape)
+                }
             }
-        }
-    ) {innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding),
-        )
-        {
-            composable(
-                Screen.Home.route,
-                enterTransition = { slideInVertically(initialOffsetY = { it }) },
-                exitTransition = { slideOutVertically(targetOffsetY = { -it }) }
-            ) {
-                HomeScreen(navController)
-            }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Home.route,
+                modifier = Modifier.padding(innerPadding),
+            )
+            {
+                composable(
+                    Screen.Home.route,
+                    enterTransition = { slideInVertically(initialOffsetY = { it }) },
+                    exitTransition = { slideOutVertically(targetOffsetY = { -it }) }
+                ) {
+                    HomeScreen(navController)
+                }
 
-            composable(Screen.Search.route,) { SearchScreen() }
-            composable(Screen.Bookmarked.route) { BookMarkScreen() }
-            composable(Screen.Account.route) { AccountScreen() }
+                composable(Screen.Search.route,) { SearchScreen() }
+                composable(Screen.Bookmarked.route) { BookMarkScreen() }
+                composable(Screen.Account.route) { AccountScreen() }
+            }
         }
     }
 
@@ -99,8 +109,9 @@ fun BottomNavigationBar(navController: NavHostController, isLandscape: Boolean) 
         items.forEach { screen ->
             NavigationBarItem(
                 modifier = Modifier
-                    .size(75.dp)
-                    .offset(y = 15.dp),
+                    .systemBarsPadding()
+                    .size(70.dp)
+                    .offset(y = 10.dp),
                 selected = currentRoute == screen.route,
                 onClick = {
                     if (currentRoute != screen.route) {
@@ -132,6 +143,15 @@ fun BottomNavigationBar(navController: NavHostController, isLandscape: Boolean) 
                 },
                 label = {},
                 alwaysShowLabel = false,
+                colors = NavigationBarItemColors(
+                    selectedIconColor = Color(0xFFd4d4dc),
+                    selectedTextColor = Color.White,
+                    selectedIndicatorColor = Color(0xFFd4d4dc),
+                    unselectedIconColor = Color.White,
+                    unselectedTextColor = Color.White,
+                    disabledIconColor = Color.White,
+                    disabledTextColor = Color.White,
+                )
             )
         }
     }

@@ -1,11 +1,15 @@
 package com.example.ezeats.Screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +36,16 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -57,7 +71,7 @@ fun BookMarkScreen() {
             // Fetch the previews for each recipe URL
             recipes = fetchRecipePreviews(bookmarkedUrls)
             isLoading = false
-            refreshing.value = true
+            refreshing.value = false
         }
     }
 
@@ -75,16 +89,69 @@ fun BookMarkScreen() {
                 refreshing.value = true
                 refreshTrigger++  // This triggers the LaunchedEffect to re-fetch the data
             },
-            refreshThreshold = 0.5.dp // The threshold for triggering the refresh when pulling (adjustable)
+            refreshThreshold = 100.dp // The threshold for triggering the refresh when pulling (adjustable)
         )
-
+        Column(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .pullRefresh(refreshState)
+                    .background(Color(0xFF9dc484)) // First: full-width background
+                    .fillMaxWidth()
+                    .padding(16.dp) // Then: inner spacing for content
             ) {
+                val darkGreen = Color(0xFF49891a)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .height(IntrinsicSize.Min)
+                        .fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { newValue ->
+                            // Limit text to 100 characters
+                            if (newValue.length <= 45) {
+                                searchQuery = newValue
+                            }
+                        },
+                        label = { Text("Filter by Title") },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = darkGreen,
+                            unfocusedIndicatorColor = darkGreen,
+                            focusedLabelColor = Color.Black,
+                            unfocusedLabelColor = Color.Black,
+                            cursorColor = darkGreen,
+                            disabledIndicatorColor = Color.Gray
+                        ),
+                        textStyle = TextStyle(
+                            color = Color.Black, // Set the text color here
+                            fontWeight = FontWeight.Bold, // Font weight
+                            fontSize = 18.sp // Adjust the font size
+                        )
+                    )
 
+                    Button(
+                        onClick = {
+                            refreshTrigger++
+                        },
+                        enabled = true,
+                        modifier = Modifier.fillMaxHeight(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = darkGreen,  // For background color
+                            contentColor = Color.Black   // For icon and text color
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            modifier = Modifier.size(32.dp), // Adjust size as needed
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -98,29 +165,93 @@ fun BookMarkScreen() {
                                 else
                                     activeFilters + filter
                             },
-                            label = { Text(filter.label) }
+                            label = { Text(filter.label) },
+                            modifier = Modifier.height(50.dp), // Set the height of the chip
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color.Transparent, // Background color for the chip
+                                labelColor = Color.Black,   // Text color inside the chip
+                                selectedContainerColor = darkGreen, // Keep the selected background color dark green
+                                selectedLabelColor = Color.White
+
+                            )
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
 
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Filter by Title") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+            }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 val searchedRecipes =
                     filteredRecipes.filter { it.title.contains(searchQuery, ignoreCase = true) }
-
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(refreshState)
+            ) {
                 when {
-                    isLoading -> CircularProgressIndicator()
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    recipes.isEmpty() -> {
+                        // Initial state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "There's nothing here.\nTry searching for some recipes to bookmark!",
+                                    color = Color.Black,
+                                    fontSize = 30.sp,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 40.sp
+                                )
+                            }
+                        }
+                    }
+
+                    !recipes.isEmpty() && searchQuery.isNotBlank() -> {
+                        // After searching, no results
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "Nothing found.\nTry searching for some recipes!",
+                                    color = Color.Black,
+                                    fontSize = 30.sp,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 40.sp
+                                )
+                            }
+                        }
+                    }
+
                     searchedRecipes.isNotEmpty() -> {
-                        LazyColumn {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+
+                            ) {
                             items(searchedRecipes) { recipe ->
                                 RecipePreviewCard(
                                     recipe,
@@ -137,25 +268,7 @@ fun BookMarkScreen() {
                         }
                     }
                 }
-                /*
-            Button(onClick = {
-                val newBookmark = "https://www.halfbakedharvest.com/giant-chocolate-chip-cookie-cookie-dough-peanut-butter-cups/"
-                // Call addBookmark to add a new URL
-                DatabaseProvider.addBookmark(newBookmark)
-
-            }) {
-                Text("Add Bookmark")
             }
-            Button(onClick = {
-                val bookmarkToRemove = "https://www.halfbakedharvest.com/giant-chocolate-chip-cookie-cookie-dough-peanut-butter-cups/"
-                DatabaseProvider.removeBookmark(bookmarkToRemove)
-
-            }) {
-                Text("Remove Bookmark")
-            }
-        }
-        */
-
         }
     }
 
