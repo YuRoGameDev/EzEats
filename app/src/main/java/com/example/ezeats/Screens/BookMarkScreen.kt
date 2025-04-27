@@ -108,6 +108,7 @@ fun BookMarkScreen() {
                             activeFilters + filter
                     },
                     modifier = Modifier
+                        .background(Color(0xFF7a9c65))
                         .fillMaxHeight()
                         .width(350.dp)
                 )
@@ -135,8 +136,10 @@ fun BookMarkScreen() {
                             activeFilters + filter
                     },
                     modifier = Modifier
+                        .background(Color(0xFF9dc484))
                         .fillMaxWidth()
                         .then(Modifier.widthIn(max = 400.dp))
+
                 )
 
                 BookmarkRecipeSection(
@@ -166,8 +169,7 @@ fun BookmarkHeaderSection(
     val darkGreen = Color(0xFF49891a)
 
     Column(
-        modifier = modifier
-            .background(Color(0xFF9dc484)) // Light green
+        modifier = modifier // Light green
             .padding(16.dp)
     ) {
         Row(

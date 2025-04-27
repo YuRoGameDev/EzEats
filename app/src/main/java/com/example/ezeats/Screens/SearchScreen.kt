@@ -83,6 +83,7 @@ fun SearchScreen() {
                             activeFilters + it
                     },
                     modifier = Modifier
+                        .background(Color(0xFF7a9c65))
                         .fillMaxHeight()
                         .width(350.dp)
                 )
@@ -119,6 +120,7 @@ fun SearchScreen() {
                             activeFilters + it
                     },
                     modifier = Modifier
+                        .background(Color(0xFF9dc484))
                         .fillMaxWidth()
                         .then(Modifier.widthIn(max = 400.dp))
                 )
@@ -149,7 +151,6 @@ fun HeaderSection(
 
     Column(
         modifier = modifier
-            .background(Color(0xFF9dc484)) // Light green
             .padding(16.dp)
     ) {
         // Search bar + Button

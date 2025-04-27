@@ -1,5 +1,6 @@
 package com.example.ezeats.recipe
 
+import android.os.Build
 import android.text.Html
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers
@@ -125,8 +126,8 @@ fun extractRecipeJson(doc: Document): JSONObject? {
 
 // Parse the structured JSON to RecipePreview
 fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
-    val title = json.optString("name")
-    val imageUrl = json.optString("image").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
+    val title = decodeHtml(json.optString("name")).replaceFirstChar { it.uppercase()}
+        val imageUrl = json.optString("image").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
     val author = json.optString("author")
 
     //val rating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
@@ -147,7 +148,8 @@ fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
 
 // Fallback method to scrape if structured data is not found
 fun fallbackScrapeRecipe(doc: Document, url: String): RecipePreview {
-    val title = doc.select("meta[property=og:title]").attr("content").ifBlank { doc.title() }
+    val title = decodeHtml(doc.select("meta[property=og:title]").attr("content").ifBlank { doc.title() })
+        .replaceFirstChar { it.uppercase() }
     val image = doc.select("meta[property=og:image]").attr("content").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
     val author = doc.select("meta[name=author]").attr("content").ifBlank { "Unknown" }
 
@@ -194,26 +196,9 @@ fun parseDuration(duration: String): String {
     }
 }
 
-
-
-
-private fun isRecipeType(json: JSONObject): Boolean {
-    val type = json.opt("@type")
-    return when (type) {
-        is String -> type.equals("Recipe", ignoreCase = true)
-        is JSONArray -> (0 until type.length()).any { i ->
-            type.optString(i).equals("Recipe", ignoreCase = true)
-        }
-        else -> false
-    }
+fun decodeHtml(html: String): String {
+    return Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString()
 }
 
 
-private fun JSONArray.findRecipeJson(): JSONObject? {
-    for (i in 0 until this.length()) {
-        val obj = this.getJSONObject(i)
-        if (obj.optString("@type") == "Recipe") return obj
-    }
-    return null
-}
 

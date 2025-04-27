@@ -2,6 +2,7 @@ package com.example.ezeats.Screens
 
 import android.content.res.Configuration
 import android.provider.ContactsContract
+import android.util.Patterns
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -28,6 +30,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ezeats.recipe.fetchRecipePreviews
 import com.example.ezeats.storage.AWSUserData
 import com.example.ezeats.storage.DatabaseProvider
@@ -39,136 +44,190 @@ import kotlin.math.log
 
 @Composable
 fun AccountScreen() {
-    var createEmail by remember { mutableStateOf("") }
-    var createPassword by remember { mutableStateOf("") }
-    var loginEmail by remember { mutableStateOf("") }
-    var loginPassword by remember { mutableStateOf("") }
-    var isLoggedIn = remember { DatabaseProvider.isLoggedIn }
-    val scope = rememberCoroutineScope()
-    var refreshTrigger by remember {  mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
 
+    var isWrong by remember { mutableStateOf(false) }
+    var refreshTrigger by remember {  mutableStateOf(0) }
+    val viewModel: AccountView = viewModel()
+    var isLoading by remember {  mutableStateOf(false) }
     BackHandler(enabled = true) {
         // Do nothing, back is disabled
     }
+    key(refreshTrigger) {
+        var createEmail by remember { mutableStateOf("") }
+        var createPassword by remember { mutableStateOf("") }
+        var loginEmail by remember { mutableStateOf("") }
+        var loginPassword by remember { mutableStateOf("") }
+        var isLoggedIn = remember { DatabaseProvider.isLoggedIn }
 
-
-    LaunchedEffect (refreshTrigger) {
-
-
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()), // In case the content gets too long
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        val darkGreen = Color(0xFF49891a)
-        if (isLoggedIn) {
+        if(isLoading){
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }else {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp), // consistent side padding
+                    .fillMaxSize()
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()), // In case the content gets too long
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Welcome\n ${DatabaseProvider.email}",
-                    style = MaterialTheme.typography.headlineLarge,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 16.dp),
-                    fontSize = 40.sp
-                )
+                val darkGreen = Color(0xFF49891a)
+                if (isLoggedIn) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp), // consistent side padding
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Welcome\n ${DatabaseProvider.email}",
+                            style = MaterialTheme.typography.headlineLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            fontSize = 40.sp
+                        )
 
-                Button(
-                    onClick = {
-                        scope.launch {
-                            onLogout()
+                        Button(
+                            onClick = {
+                                viewModel.logoutAccount(
+                                    onLoading = {isLoading = it},
+                                    onFinished = { refreshTrigger++ })
+                            },
+                            modifier = Modifier
+                                .width(250.dp) // fixed width!
+                                .height(60.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = darkGreen,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                text = "Log Out",
+                                style = MaterialTheme.typography.headlineSmall, // <-- larger text style
+                                textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                                fontSize = 32.sp
+                            )
+
                         }
-                              refreshTrigger = !refreshTrigger},
-                    modifier = Modifier
-                        .width(250.dp) // fixed width!
-                        .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = darkGreen,
-                        contentColor = Color.White
-                    )
-                ) {
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Below the button: Fun food facts
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp)
+                        ) {
+                            Text(
+                                text = "Fun Fact: You've got ${DatabaseProvider.bookmarkedUrlsList.size} bookmarks!",
+                                style = MaterialTheme.typography.headlineSmall, // <-- larger text style
+                                textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                } else {
+
+                    val configuration = LocalConfiguration.current
+
+                    val isLandscape =
+                        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+                    if (isLandscape) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(32.dp) // Space between Create & Login
+                        ) {
+                            CreateAccountSection(
+                                createEmail,
+                                createPassword,
+                                onCreateEmailChange = { createEmail = it },
+                                onCreatePasswordChange = { createPassword = it },
+                                modifier = Modifier.weight(1f),
+                                true,
+                                viewModel = viewModel,
+                                loadingChange = {isLoading = it},
+                                refreshChange = {
+                                    if(it){
+                                        refreshTrigger++
+                                    }else{
+                                        isWrong = true
+                                    }
+                                }
+                            )
+                            LoginSection(
+                                loginEmail,
+                                loginPassword,
+                                onLoginEmailChange = { loginEmail = it },
+                                onLoginPasswordChange = { loginPassword = it },
+                                modifier = Modifier.weight(1f),
+                                true,
+                                viewModel = viewModel,
+                                loadingChange = {isLoading = it},
+                                refreshChange = {
+                                    if(it){
+                                        refreshTrigger++
+                                    }else{
+                                        isWrong = true
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(48.dp) // Bigger space between sections
+                        ) {
+                            CreateAccountSection(
+                                createEmail,
+                                createPassword,
+                                onCreateEmailChange = { createEmail = it },
+                                onCreatePasswordChange = { createPassword = it },
+                                viewModel = viewModel,
+                                loadingChange = {isLoading = it},
+                                refreshChange = {
+                                    if(it){
+                                        refreshTrigger++
+                                    }else{
+                                        isWrong = true
+                                    }
+                                }
+                            )
+                            LoginSection(
+                                loginEmail,
+                                loginPassword,
+                                onLoginEmailChange = { loginEmail = it },
+                                onLoginPasswordChange = { loginPassword = it },
+                                viewModel = viewModel,
+                                loadingChange = {isLoading = it},
+                                refreshChange = {
+                                    if(it){
+                                     refreshTrigger++
+                                    }else{
+                                        isWrong = true
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    print(isWrong)
+                    if(isWrong){
                     Text(
-                        text = "Log Out",
+                        text = "Invalid Email/Password",
                         style = MaterialTheme.typography.headlineSmall, // <-- larger text style
                         textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                        fontSize = 32.sp)
-
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Below the button: Fun food facts
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                ) {
-                    Text(
-                        text = "Fun Fact: You've got ${DatabaseProvider.bookmarkedUrlsList.size} bookmarks!",
-                        style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                        textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        } else {
-
-            val configuration = LocalConfiguration.current
-
-            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-            if (isLandscape) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(32.dp) // Space between Create & Login
-                ) {
-                    CreateAccountSection(
-                        createEmail,
-                        createPassword,
-                        onCreateEmailChange = {createEmail = it},
-                        onCreatePasswordChange = {createPassword = it},
-                        modifier = Modifier.weight(1f),
-                        true
-                    )
-                    LoginSection(
-                        loginEmail,
-                        loginPassword,
-                        onLoginEmailChange = { loginEmail = it },
-                        onLoginPasswordChange = {loginPassword = it},
-                        modifier = Modifier.weight(1f),
-                        true
-                    )
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(48.dp) // Bigger space between sections
-                ) {
-                    CreateAccountSection(
-                        createEmail,
-                        createPassword,
-                        onCreateEmailChange = {createEmail = it},
-                        onCreatePasswordChange = {createPassword = it}
-                    )
-                    LoginSection(
-                        loginEmail,
-                        loginPassword,
-                        onLoginEmailChange = { loginEmail = it },
-                        onLoginPasswordChange = {loginPassword = it}
-                    )
+                        fontSize = 32.sp
+                        )
+                    }
                 }
             }
         }
@@ -182,10 +241,16 @@ private fun CreateAccountSection(
     onCreateEmailChange: (String) -> Unit,
     onCreatePasswordChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isLandscape: Boolean = false
+    isLandscape: Boolean = false,
+    viewModel: AccountView,
+    refreshChange: (Boolean) -> Unit,
+    loadingChange: (Boolean) -> Unit
 ) {
+
     val scope = rememberCoroutineScope()
     val darkGreen = Color(0xFF49891a)
+
+
     Column(
         modifier = modifier
     ) {
@@ -224,8 +289,9 @@ private fun CreateAccountSection(
                 }
 
                 Button(
-                    onClick = {
-                        scope.launch {  onCreateAccount(createEmail, createPassword) }},
+                    onClick = { viewModel.createAccount(createEmail, createPassword,
+                        onLoading = {loadingChange(it)},
+                        onFinished = {refreshChange(it)}) },
                     modifier = Modifier
                         .weight(1f)
                         .height(120.dp),
@@ -239,7 +305,8 @@ private fun CreateAccountSection(
                         text = "Create\nAccount",
                         style = MaterialTheme.typography.headlineSmall, // <-- larger text style
                         textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                        fontSize = 20.sp)
+                        fontSize = 20.sp
+                    )
                 }
             }
         } else {
@@ -264,7 +331,9 @@ private fun CreateAccountSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = {  scope.launch {onCreateAccount(createEmail, createPassword)} },
+                onClick = { viewModel.createAccount(createEmail, createPassword,
+                    onLoading = {loadingChange(it)},
+                    onFinished = {refreshChange(it)}) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
@@ -273,13 +342,16 @@ private fun CreateAccountSection(
                     contentColor = Color.White
                 )// taller to match the two fields
             ) {
-                Text("Create Account",
+                Text(
+                    "Create Account",
                     style = MaterialTheme.typography.headlineSmall, // <-- larger text style
                     textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                    fontSize = 20.sp)
+                    fontSize = 20.sp
+                )
             }
         }
     }
+
 }
 
 @Composable
@@ -289,106 +361,165 @@ private fun LoginSection(
     onLoginEmailChange: (String) -> Unit,
     onLoginPasswordChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    isLandscape: Boolean = false
+    isLandscape: Boolean = false,
+    viewModel: AccountView,
+    refreshChange: (Boolean) -> Unit,
+    loadingChange: (Boolean) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val darkGreen = Color(0xFF49891a)
-    Column(
-        modifier = modifier
-    ) {
-        Text(
-            text = "Login",
-            style = MaterialTheme.typography.headlineMedium
-        )
 
-        Spacer(modifier = Modifier.height(16.dp))
+       Column(
+           modifier = modifier
+       ) {
+           Text(
+               text = "Login",
+               style = MaterialTheme.typography.headlineMedium
+           )
 
-        if (isLandscape) {
-            // LANDSCAPE: fields and button side-by-side
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.weight(2f)
-                ) {
-                    OutlinedTextField(
-                        value = loginEmail,
-                        onValueChange = onLoginEmailChange,
-                        label = { Text("Email/Username") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+           Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(8.dp))
+           if (isLandscape) {
+               // LANDSCAPE: fields and button side-by-side
+               Row(
+                   modifier = Modifier.fillMaxWidth(),
+                   horizontalArrangement = Arrangement.spacedBy(16.dp)
+               ) {
+                   Column(
+                       modifier = Modifier.weight(2f)
+                   ) {
+                       OutlinedTextField(
+                           value = loginEmail,
+                           onValueChange = onLoginEmailChange,
+                           label = { Text("Email/Username") },
+                           modifier = Modifier.fillMaxWidth()
+                       )
 
-                    OutlinedTextField(
-                        value = loginPassword,
-                        onValueChange = onLoginPasswordChange,
-                        label = { Text("Password") },
-                        modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = PasswordVisualTransformation()
-                    )
-                }
+                       Spacer(modifier = Modifier.height(8.dp))
 
-                Button(
-                    onClick = { scope.launch {  onLogin(loginEmail, loginPassword) }},
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(130.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = darkGreen,
-                        contentColor = Color.White
-                    )// taller to match the two fields// Match fields height roughly
-                ) {
-                    Text("Login",
-                        style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                        textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                        fontSize = 20.sp)
-                }
+                       OutlinedTextField(
+                           value = loginPassword,
+                           onValueChange = onLoginPasswordChange,
+                           label = { Text("Password") },
+                           modifier = Modifier.fillMaxWidth(),
+                           visualTransformation = PasswordVisualTransformation()
+                       )
+                   }
+
+                   Button(
+                       onClick = { viewModel.loginAccount(loginEmail, loginPassword,
+                           onLoading = {loadingChange(it)},
+                           onFinished = {refreshChange(it)}) },
+                       modifier = Modifier
+                           .weight(1f)
+                           .height(130.dp),
+                       shape = RoundedCornerShape(20.dp),
+                       colors = ButtonDefaults.buttonColors(
+                           containerColor = darkGreen,
+                           contentColor = Color.White
+                       )// taller to match the two fields// Match fields height roughly
+                   ) {
+                       Text(
+                           "Login",
+                           style = MaterialTheme.typography.headlineSmall, // <-- larger text style
+                           textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                           fontSize = 20.sp
+                       )
+                   }
+               }
+           } else {
+               // PORTRAIT: fields and button stacked vertically
+               OutlinedTextField(
+                   value = loginEmail,
+                   onValueChange = onLoginEmailChange,
+                   label = { Text("Email") },
+                   modifier = Modifier.fillMaxWidth()
+               )
+
+               Spacer(modifier = Modifier.height(8.dp))
+
+               OutlinedTextField(
+                   value = loginPassword,
+                   onValueChange = onLoginPasswordChange,
+                   label = { Text("Password") },
+                   modifier = Modifier.fillMaxWidth(),
+                   visualTransformation = PasswordVisualTransformation()
+               )
+
+               Spacer(modifier = Modifier.height(16.dp))
+
+               Button(
+                   onClick = { viewModel.loginAccount(loginEmail, loginPassword,
+                       onLoading = {loadingChange(it)},
+                       onFinished = {refreshChange(it)}) },
+                   modifier = Modifier
+                       .fillMaxWidth()
+                       .height(60.dp),
+                   colors = ButtonDefaults.buttonColors(
+                       containerColor = darkGreen,
+                       contentColor = Color.White
+                   )// taller to match the two fields
+               ) {
+                   Text(
+                       "Login",
+                       style = MaterialTheme.typography.headlineSmall, // <-- larger text style
+                       textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                       fontSize = 20.sp
+                   )
+               }
+           }
+       }
+
+}
+
+class AccountView : ViewModel() {
+
+    fun createAccount(email: String, password: String, onLoading:(Boolean) -> Unit,onFinished: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            var success = false
+            onLoading(true)
+            try {
+                success = onCreateAccount(email, password)
+            } finally {
+                onLoading(false)
+                onFinished(success)
             }
-        } else {
-            // PORTRAIT: fields and button stacked vertically
-            OutlinedTextField(
-                value = loginEmail,
-                onValueChange = onLoginEmailChange,
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = loginPassword,
-                onValueChange = onLoginPasswordChange,
-                label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    scope.launch { onLogin(loginEmail, loginPassword) } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = darkGreen,
-                    contentColor = Color.White
-                )// taller to match the two fields
-            ) {
-                Text("Login",
-                    style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                    textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                    fontSize = 20.sp)
+        }
+    }
+    fun loginAccount(email: String, password: String, onLoading:(Boolean) -> Unit, onFinished: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            var success = false
+            onLoading(true)
+            try {
+                success = onLogin(email, password)
+            } finally {
+                onLoading(false)
+                onFinished(success)
+            }
+        }
+    }
+    fun logoutAccount( onLoading:(Boolean) -> Unit, onFinished: () -> Unit) {
+        viewModelScope.launch {
+            onLoading(true)
+            try {
+                onLogout()
+            } finally {
+                onLoading(false)
+                onFinished()
             }
         }
     }
 }
 
-suspend fun onCreateAccount(email: String, password: String){
+
+suspend fun onCreateAccount(email: String, password: String): Boolean{
+    var LoggedIn = false
+
+    if (email.isEmpty() || password.isEmpty()) {
+        println("Invalid email or password")
+        return LoggedIn // Return false if validation fails
+    }
+
     if(DatabaseProvider.dynamoDBHelper.getUserDataById(email,password) == null){
         println("Account Doesnt Exist")
         DatabaseProvider.db.userDataDao().updateLoginStatus(true)
@@ -404,12 +535,21 @@ suspend fun onCreateAccount(email: String, password: String){
         )
 
         DatabaseProvider.dynamoDBHelper.saveUserData(user)
+        LoggedIn = true
     }else{
         println("Account Exists")
     }
+    return LoggedIn
 }
 
-suspend fun onLogin(email: String, password: String){
+suspend fun onLogin(email: String, password: String) : Boolean{
+    var LoggedIn = false
+
+    if (email.isEmpty() || password.isEmpty()) {
+        println("Invalid email or password")
+        return LoggedIn // Return false if validation fails
+    }
+
     val userData = DatabaseProvider.dynamoDBHelper.getUserDataById(email,password)
     if(userData != null){
         println("Account Exists")
@@ -421,10 +561,11 @@ suspend fun onLogin(email: String, password: String){
         DatabaseProvider.email = email
         DatabaseProvider.password = password
         DatabaseProvider.bookmarkedUrlsList = userData.bookmarkedUrls.toMutableList()
-
+        LoggedIn = true
     }else{
         println("Account Doesnt Exist")
     }
+    return LoggedIn
 }
 
 suspend fun onLogout(){
