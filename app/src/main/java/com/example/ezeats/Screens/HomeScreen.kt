@@ -2,37 +2,32 @@ package com.example.ezeats.Screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.*
+
 import androidx.navigation.NavController
 import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.Screen
 import com.example.ezeats.R
+import com.example.ezeats.ui.theme.lightBlue
 
+//This is the starting home screen
+//It only shows on startup and isn't used again
 @Composable
 fun HomeScreen(navController: NavController) {
-
-
-    BackHandler(enabled = true) {
-        // Do nothing, back is disabled
-    }
-
+    BackHandler(enabled = true) {}
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val buttonMaxWidth = if (screenWidth > 600.dp) 400.dp else Dp.Unspecified
 
@@ -54,31 +49,24 @@ fun HomeScreen(navController: NavController) {
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-        val imageSize = if (isLandscape) 150.dp else 250.dp  // adjust sizes as needed
-
+        val imageSize = if (isLandscape) 150.dp else 250.dp
+        //Logo
         Image(
             painter = painterResource(id = R.drawable.logo_transparent),
             contentDescription = "Logo",
             modifier = Modifier.size(imageSize)
         )
 
-        /*
-        Text(
-            text = "EZ-Eats",
-            style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 15.dp),
-            fontSize = 80.sp
-        )
-        */
         Spacer(modifier = Modifier.height(16.dp))
 
+        //Search Screen button
         Button(
             onClick = { navController.navigate(Screen.Search.route) },
             shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7cac54)),
+            colors = ButtonDefaults.buttonColors(containerColor = lightBlue),
             modifier = Modifier
                 .then(if (buttonMaxWidth != Dp.Unspecified) Modifier.width(buttonMaxWidth) else Modifier.fillMaxWidth())
-                .height(if (isLandscape) 50.dp else 64.dp )
+                .height(if (isLandscape) 50.dp else 64.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Search,
@@ -96,8 +84,10 @@ fun HomeScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        //These are the Bookmark and account buttons
+        //They each get custom composables if the user switches from portrait to landscape
         BoxWithConstraints {
-            val isLandscape = this.maxWidth > 600.dp  // use 'this' or omit since it's in scope
+            val isLandscape = this.maxWidth > 600.dp
 
             if (isLandscape) {
                 Row(
@@ -142,7 +132,11 @@ fun HomeScreen(navController: NavController) {
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
                         border = BorderStroke(2.dp, Color.Black),
                         modifier = Modifier
-                            .then(if (buttonMaxWidth != Dp.Unspecified) Modifier.width(buttonMaxWidth) else Modifier.fillMaxWidth())
+                            .then(
+                                if (buttonMaxWidth != Dp.Unspecified) Modifier.width(
+                                    buttonMaxWidth
+                                ) else Modifier.fillMaxWidth()
+                            )
                             .height(52.dp)
                     ) {
                         Text("View Bookmarked Recipes", fontSize = 25.sp)
@@ -154,9 +148,14 @@ fun HomeScreen(navController: NavController) {
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
                         border = BorderStroke(2.dp, Color.Black),
                         modifier = Modifier
-                            .then(if (buttonMaxWidth != Dp.Unspecified) Modifier.width(buttonMaxWidth) else Modifier.fillMaxWidth())
+                            .then(
+                                if (buttonMaxWidth != Dp.Unspecified) Modifier.width(
+                                    buttonMaxWidth
+                                ) else Modifier.fillMaxWidth()
+                            )
                             .height(52.dp)
                     ) {
+                        //If the user is already logged in, this text will change
                         Text(
                             text = if (isLoggedIn.value) "My Account" else "Create Account",
                             fontSize = 25.sp
@@ -165,8 +164,5 @@ fun HomeScreen(navController: NavController) {
                 }
             }
         }
-
-
-
     }
 }

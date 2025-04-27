@@ -1,20 +1,13 @@
 package com.example.ezeats.recipe
 
-import android.os.Build
 import android.text.Html
 import kotlinx.coroutines.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONArray
-import org.json.JSONObject
+import org.json.*
 import org.jsoup.Jsoup
-import org.json.JSONTokener
 import java.util.regex.Pattern
 import org.jsoup.nodes.Document
 
-
+//As to avoid getting blocked from parsing the website, a lot of agents have to be made
 object UserAgentPool {
     val userAgents = listOf(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -35,34 +28,28 @@ object UserAgentPool {
     )
 }
 
-// Function to fetch recipe previews from a list of URLs
+//Goes through all the recipes. Its all being done on a different thread
 suspend fun fetchRecipePreviews(urls: List<String>): List<RecipePreview> {
-    // Use async to run the requests concurrently
     return coroutineScope {
         urls.map { url ->
             async(Dispatchers.IO) { fetchRecipePreview(url) }
         }.awaitAll().filterNotNull()
     }
 
-    // Wait for all the async tasks to complete and gather the results
-    //return deferredResults.awaitAll().filterNotNull() // Filter out null results
 }
 
-
-
+//Gets the individual data for a recipe and parses it
 suspend fun fetchRecipePreview(url: String): RecipePreview? {
     val doc = fetchRecipeFromUrl(url) ?: return null
 
-    // Attempt to extract structured data (JSON-LD)
     val json = extractRecipeJson(doc)
 
     return json?.let { parseJsonToRecipePreview(it, url) }
         ?: fallbackScrapeRecipe(doc, url)
 }
 
-// Helper function to fetch the document and extract the JSON-LD
+//Ths gets the jsoin html file using Jsoup
 suspend fun fetchRecipeFromUrl(url: String): Document? = withContext(Dispatchers.IO) {
-    // Introduce a random delay (between 800ms and 1500ms)
     delay((800..1500).random().toLong())
 
     val randomUserAgent = UserAgentPool.userAgents.random()
@@ -81,7 +68,9 @@ suspend fun fetchRecipeFromUrl(url: String): Document? = withContext(Dispatchers
     }
 }
 
-// Helper function to extract the first recipe JSON-LD from the document
+//The html file from Jsoup is then extracted and parsed
+//This is roughly 75% accurate with the 20 supported recipe websites
+//Due to website html being structered differently, some data may be missing
 fun extractRecipeJson(doc: Document): JSONObject? {
     val scriptTags = doc.select("script[type=application/ld+json]")
     for (tag in scriptTags) {
@@ -89,12 +78,12 @@ fun extractRecipeJson(doc: Document): JSONObject? {
         try {
             val parsedJson = JSONTokener(rawJson).nextValue()
 
-            // Handle case when there's a single Recipe object
-            if (parsedJson is JSONObject && parsedJson.optString("@type").contains("Recipe", ignoreCase = true)) {
+            if (parsedJson is JSONObject && parsedJson.optString("@type")
+                    .contains("Recipe", ignoreCase = true)
+            ) {
                 return parsedJson
             }
 
-            // Handle case for @graph array containing multiple objects
             if (parsedJson is JSONObject && parsedJson.has("@graph")) {
                 val graph = parsedJson.getJSONArray("@graph")
                 for (i in 0 until graph.length()) {
@@ -105,7 +94,6 @@ fun extractRecipeJson(doc: Document): JSONObject? {
                 }
             }
 
-            // Handle case for array of Recipe objects
             if (parsedJson is JSONArray) {
                 for (i in 0 until parsedJson.length()) {
                     val obj = parsedJson.getJSONObject(i)
@@ -124,22 +112,20 @@ fun extractRecipeJson(doc: Document): JSONObject? {
     return null
 }
 
-// Parse the structured JSON to RecipePreview
+//This is the general Json parser, getting all the data and converting it to a RecipePreview
 fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
-    val title = decodeHtml(json.optString("name")).replaceFirstChar { it.uppercase()}
-        val imageUrl = json.optString("image").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
+    val title = decodeHtml(json.optString("name")).replaceFirstChar { it.uppercase() }
+    val imageUrl = json.optString("image").takeIf { it.isNotEmpty() } ?: "your_default_image_url"
     val author = json.optString("author")
 
-    //val rating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
     val rawRating = json.optJSONObject("aggregateRating")?.optDouble("ratingValue")
     val rating = rawRating?.takeIf { !it.isNaN() }
 
     val reviews = json.optJSONObject("aggregateRating")?.optInt("reviewCount")
     val time = json.optString("cookTime")
     val parsedTime = parseDuration(time)
-    //val ingredients = json.optJSONArray("recipeIngredient")?.join(", ") ?: "N/A"
+
     val ingredients = json.optJSONArray("recipeIngredient")?.let {
-        // Convert the JSONArray to a List of Strings
         List(it.length()) { index -> it.getString(index) }
     } ?: listOf("Ingredients Unavailable")
 
@@ -148,19 +134,20 @@ fun parseJsonToRecipePreview(json: JSONObject, url: String): RecipePreview {
 
 // Fallback method to scrape if structured data is not found
 fun fallbackScrapeRecipe(doc: Document, url: String): RecipePreview {
-    val title = decodeHtml(doc.select("meta[property=og:title]").attr("content").ifBlank { doc.title() })
-        .replaceFirstChar { it.uppercase() }
-    val image = doc.select("meta[property=og:image]").attr("content").takeIf { it.isNotEmpty() } ?: "your_default_image_url" // Default image URL if empty
+    val title =
+        decodeHtml(doc.select("meta[property=og:title]").attr("content").ifBlank { doc.title() })
+            .replaceFirstChar { it.uppercase() }
+    val image = doc.select("meta[property=og:image]").attr("content").takeIf { it.isNotEmpty() }
+        ?: "your_default_image_url"
     val author = doc.select("meta[name=author]").attr("content").ifBlank { "Unknown" }
 
-    //val rating = doc.select("span[itemprop=ratingValue]").text().toDoubleOrNull()
     val rawRating = doc.select("span[itemprop=ratingValue]").text().toDoubleOrNull()
     val rating = rawRating?.takeIf { !it.isNaN() }
 
     val reviews = doc.select("span[itemprop=reviewCount]").text().toIntOrNull()
     val time = doc.select("meta[itemprop=cookTime]").attr("content").ifBlank { "Unknown" }
     val parsedTime = parseDuration(time)
-    //val ingredients = doc.select("ul.recipe-ingredients li").joinToString(", ") { it.text() }
+
     val ingredients = doc.select("ul.recipe-ingredients li")
         .map { it.text() }
         .takeIf { it.isNotEmpty() } ?: listOf("Ingredients Unavailable")
@@ -168,6 +155,7 @@ fun fallbackScrapeRecipe(doc: Document, url: String): RecipePreview {
     return RecipePreview(title, image, author, rating, reviews, parsedTime, ingredients, url)
 }
 
+//This converts the time to minutes be readable
 fun parseDuration(duration: String): String {
     val pattern = Pattern.compile("PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?")
     val matcher = pattern.matcher(duration)
@@ -177,18 +165,15 @@ fun parseDuration(duration: String): String {
         val minutes = matcher.group(2)?.toIntOrNull() ?: 0
         val seconds = matcher.group(3)?.toIntOrNull() ?: 0
 
-        // If the time is 0, set it to 30 minutes
         val finalHours = if (hours == 0 && minutes == 0 && seconds == 0) 0 else hours
         val finalMinutes = if (hours == 0 && minutes == 0 && seconds == 0) 30 else minutes
         val finalSeconds = if (hours == 0 && minutes == 0 && seconds == 0) 0 else seconds
 
-        // Construct a human-readable time string
         val timeParts = mutableListOf<String>()
         if (finalHours > 0) timeParts.add("${finalHours}h")
         if (finalMinutes > 0) timeParts.add("${finalMinutes}m")
         if (finalSeconds > 0) timeParts.add("${finalSeconds}s")
 
-        // Return the formatted time, or "N/A" if nothing was matched
         timeParts.joinToString(" ") { it }
             .takeIf { it.isNotEmpty() } ?: "30m+"
     } else {
@@ -196,6 +181,7 @@ fun parseDuration(duration: String): String {
     }
 }
 
+//Fix for the ' character since that comes out as &39; in html
 fun decodeHtml(html: String): String {
     return Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString()
 }

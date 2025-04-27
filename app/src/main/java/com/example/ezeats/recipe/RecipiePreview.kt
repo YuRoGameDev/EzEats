@@ -1,5 +1,6 @@
 package com.example.ezeats.recipe
 
+//Data class for the Recipe preview
 data class RecipePreview(
     val title: String,
     val imageUrl: String,

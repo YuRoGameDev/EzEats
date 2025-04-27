@@ -2,43 +2,31 @@ package com.example.ezeats.Screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.pullrefresh.PullRefreshState
 import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.*
+
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+
 import com.example.ezeats.storage.DatabaseProvider
-import com.example.ezeats.recipe.RecipeFilter
-import com.example.ezeats.recipe.RecipePreview
-import com.example.ezeats.recipe.RecipePreviewCard
-import com.example.ezeats.recipe.RecipeWebView
-import com.example.ezeats.recipe.fetchRecipePreviews
-import com.example.ezeats.recipe.filterAndSortRecipes
+import com.example.ezeats.recipe.*
+
 import kotlinx.coroutines.launch
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
@@ -47,6 +35,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 
+import com.example.ezeats.ui.theme.darkGreen
+
+//Handles the visuals for the book mark screen.
+//This is the same as the search screen and Im too lazy to put comments in each section
+//But only difference is instead of searching for the recipe, it automatically gets and populates
+//with the urls from the local room storage.
+//Also there is an additional search field to filter bookmarked recipes
+//Users can also refresh the list by swiping up
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun BookMarkScreen() {
@@ -56,7 +52,7 @@ fun BookMarkScreen() {
     var recipes by remember { mutableStateOf<List<RecipePreview>>(emptyList()) }
     var selectedRecipe by remember { mutableStateOf<RecipePreview?>(null) }
     var bookmarkedUrls by remember { mutableStateOf(DatabaseProvider.getBookmarkedUrls()) }
-    var refreshTrigger by remember {  mutableStateOf(0) }
+    var refreshTrigger by remember { mutableStateOf(0) }
     var activeFilters by remember { mutableStateOf(setOf<RecipeFilter>()) }
     var searchQuery by remember { mutableStateOf("") }
     val filteredRecipes = filterAndSortRecipes(recipes, activeFilters)
@@ -71,14 +67,12 @@ fun BookMarkScreen() {
             isLoading = true
             recipes = emptyList()
 
-            // Fetch the previews for each recipe URL
             recipes = fetchRecipePreviews(bookmarkedUrls)
             isLoading = false
             refreshing.value = false
         }
     }
 
-    // Display RecipeWebView when a recipe is selected
     if (selectedRecipe != null) {
         RecipeWebView(
             url = selectedRecipe!!.url,
@@ -88,11 +82,10 @@ fun BookMarkScreen() {
         val refreshState = rememberPullRefreshState(
             refreshing = refreshing.value,
             onRefresh = {
-                // When refreshing, trigger the refresh logic
                 refreshing.value = true
-                refreshTrigger++  // This triggers the LaunchedEffect to re-fetch the data
+                refreshTrigger++
             },
-            refreshThreshold = 100.dp // The threshold for triggering the refresh when pulling (adjustable)
+            refreshThreshold = 100.dp
         )
         if (isLandscape) {
             Row(modifier = Modifier.fillMaxSize()) {
@@ -155,8 +148,6 @@ fun BookMarkScreen() {
     }
 }
 
-
-
 @Composable
 fun BookmarkHeaderSection(
     searchQuery: String,
@@ -166,10 +157,8 @@ fun BookmarkHeaderSection(
     onFilterClicked: (RecipeFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val darkGreen = Color(0xFF49891a)
-
     Column(
-        modifier = modifier // Light green
+        modifier = modifier
             .padding(16.dp)
     ) {
         Row(
@@ -222,10 +211,10 @@ fun BookmarkHeaderSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-        // Filters
+        val isLandscape =
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         if (isLandscape) {
-            val chipRows = RecipeFilter.entries.chunked(2) // Break into rows with 2 items each
+            val chipRows = RecipeFilter.entries.chunked(2)
 
             Column(
                 modifier = Modifier
@@ -245,7 +234,7 @@ fun BookmarkHeaderSection(
                                 label = { Text(filter.label) },
                                 modifier = Modifier
                                     .height(50.dp)
-                                    .weight(1f), // Distribute evenly within the row
+                                    .weight(1f),
                                 colors = FilterChipDefaults.filterChipColors(
                                     containerColor = Color.Transparent,
                                     labelColor = Color.Black,
@@ -255,7 +244,6 @@ fun BookmarkHeaderSection(
                             )
                         }
 
-                        // Fill empty space if there's an odd number of filters
                         if (row.size < 2) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -314,6 +302,7 @@ fun BookmarkRecipeSection(
                     CircularProgressIndicator()
                 }
             }
+
             recipes.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -328,6 +317,7 @@ fun BookmarkRecipeSection(
                     )
                 }
             }
+
             searchedRecipes.isEmpty() && (searchQuery.isNotBlank() || filteredRecipes.isEmpty()) -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -342,6 +332,7 @@ fun BookmarkRecipeSection(
                     )
                 }
             }
+
             else -> {
                 LazyColumn(
                     modifier = Modifier

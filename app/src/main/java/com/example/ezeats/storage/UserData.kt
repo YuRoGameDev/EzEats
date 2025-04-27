@@ -1,9 +1,6 @@
 package com.example.ezeats.storage
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-import androidx.room.TypeConverters
+import androidx.room.*
 
 @Entity(tableName = "user_data")
 data class UserData(
@@ -11,5 +8,5 @@ data class UserData(
     @ColumnInfo(name = "email") val email: String,
     @ColumnInfo(name = "password") val password: String,
     @ColumnInfo(name = "is_logged_in") val isLoggedIn: Boolean,
-    @TypeConverters(StringListConverter::class)@ColumnInfo(name = "bookmarked_urls") val bookmarkedUrls: List<String>
+    @TypeConverters(StringListConverter::class) @ColumnInfo(name = "bookmarked_urls") val bookmarkedUrls: List<String>
 )

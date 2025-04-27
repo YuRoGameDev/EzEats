@@ -2,30 +2,28 @@ package com.example.ezeats.recipe
 
 import android.annotation.SuppressLint
 import android.app.Activity
+
 import android.content.Context
 import android.content.Intent
+
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.compose.BackHandler
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.viewinterop.AndroidView
+
 import android.webkit.*
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.activity.compose.BackHandler
+
+import androidx.compose.animation.*
+
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Share
+
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 
 import androidx.compose.ui.Alignment
@@ -33,17 +31,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import java.util.*
-import androidx.compose.material3.Icon
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+
 import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.R
+import com.example.ezeats.ui.theme.transLightGreen
 
-
+//This handles the actual Web Viewer
+//It basically opens a browser within the app to view the recipe
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RecipeWebView(
@@ -65,7 +63,7 @@ fun RecipeWebView(
     val context = LocalContext.current
 
     LaunchedEffect(key1 = url) {
-        isWebViewVisible = true // Make WebView visible when launched
+        isWebViewVisible = true
     }
 
     Box(
@@ -74,9 +72,11 @@ fun RecipeWebView(
 
         AnimatedVisibility(
             visible = isWebViewVisible,
-            enter = slideInVertically(initialOffsetY = { it }), // Slide in from bottom
-            exit = slideOutVertically(targetOffsetY = { it }) // Optionally slide out
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
         ) {
+            //The android view. One thing added was removing all the popup ads
+            //Interactivity was limited to just the simple clicking and scrolling
             AndroidView(
                 factory = { context ->
                     WebView(context).apply {
@@ -119,42 +119,40 @@ fun RecipeWebView(
                 modifier = Modifier.fillMaxSize()
             )
 
-
-        // Close button (Top-left)
-
         }
-        // Bookmark + Share buttons (Top-right)
+
+        //These are the custom Buttons included with the WebView
         Column(
             modifier = Modifier
                 .padding(16.dp)
                 .align(Alignment.TopEnd),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
+            //Book marking
             IconButton(
                 onClick = {
-                    if(DatabaseProvider.isBookmarked(url)){
+                    if (DatabaseProvider.isBookmarked(url)) {
                         DatabaseProvider.removeBookmark(url)
-                    }else{
+                    } else {
                         DatabaseProvider.addBookmark(url)
                     }
                     isBookmarked = !isBookmarked
                 },
                 modifier = Modifier
-                    .background(Color(0xBF9dc484), shape = CircleShape)
+                    .background(transLightGreen, shape = CircleShape)
                     .size(50.dp)
             ) {
                 Image(
                     painter = painterResource(id = if (isBookmarked) R.drawable.bookmarked else R.drawable.bookmark_none),
                     contentDescription = "Bookmark",
-                    modifier = Modifier.size(42.dp), // Adjust size as needed
-
+                    modifier = Modifier.size(42.dp),
                 )
             }
+            //Recipe Share
             IconButton(
-                onClick = { shareRecipe(context,url) },
+                onClick = { shareRecipe(context, url) },
                 modifier = Modifier
-                    .background(Color(0xBF9dc484), shape = CircleShape)
+                    .background(transLightGreen, shape = CircleShape)
                     .size(50.dp)
             ) {
                 Icon(
@@ -164,10 +162,11 @@ fun RecipeWebView(
                     modifier = Modifier.size(28.dp)
                 )
             }
+            //Close the Webview
             IconButton(
                 onClick = { onBack() },
                 modifier = Modifier
-                    .background(Color(0xBF9dc484), shape = CircleShape)
+                    .background(transLightGreen, shape = CircleShape)
                     .size(50.dp)
             ) {
                 Icon(
@@ -182,23 +181,19 @@ fun RecipeWebView(
     }
 }
 
-
+//Allows users to share recipes through the messaging app
 fun shareRecipe(context: Context, recipeUrl: String) {
-
-    // Using LaunchedEffect to perform side effects (starting intent) safely in Composable context
     val message = "Check out this awesome recipe: $recipeUrl"
     val shareIntent = Intent().apply {
         action = Intent.ACTION_SEND
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, message)
 
-        // Check if context is an instance of Activity, apply the flag to start the activity
         if (context is Activity) {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
     }
 
-    // Start the activity using the context
     context.startActivity(Intent.createChooser(shareIntent, "Share via"))
 }
 

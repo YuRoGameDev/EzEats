@@ -1,27 +1,17 @@
 package com.example.ezeats.Screens
 
 import android.content.res.Configuration
-import android.provider.ContactsContract
-import android.util.Patterns
+
 import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+
+import androidx.compose.material3.*
+
+import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,28 +20,26 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ezeats.recipe.fetchRecipePreviews
+
 import com.example.ezeats.storage.AWSUserData
 import com.example.ezeats.storage.DatabaseProvider
-import com.example.ezeats.storage.DynamoDBHelper
-import kotlinx.coroutines.coroutineScope
+import com.example.ezeats.ui.theme.darkGreen
+
 import kotlinx.coroutines.launch
-import kotlin.math.log
 
-
+//This handles the entire account page
 @Composable
 fun AccountScreen() {
-
     var isWrong by remember { mutableStateOf(false) }
-    var refreshTrigger by remember {  mutableStateOf(0) }
+    var refreshTrigger by remember { mutableStateOf(0) }
     val viewModel: AccountView = viewModel()
-    var isLoading by remember {  mutableStateOf(false) }
-    BackHandler(enabled = true) {
-        // Do nothing, back is disabled
-    }
+    var isLoading by remember { mutableStateOf(false) }
+    BackHandler(enabled = true) {}
+    //This reloads the entire page
     key(refreshTrigger) {
         var createEmail by remember { mutableStateOf("") }
         var createPassword by remember { mutableStateOf("") }
@@ -59,30 +47,32 @@ fun AccountScreen() {
         var loginPassword by remember { mutableStateOf("") }
         var isLoggedIn = remember { DatabaseProvider.isLoggedIn }
 
-        if(isLoading){
+        //While the backend processes, a loading screen would be showed
+        if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
-        }else {
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp)
-                    .verticalScroll(rememberScrollState()), // In case the content gets too long
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val darkGreen = Color(0xFF49891a)
+                //Only shown when the user is logged in
                 if (isLoggedIn) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp), // consistent side padding
+                            .padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        //A simple welcome message
                         Text(
                             text = "Welcome\n ${DatabaseProvider.email}",
                             style = MaterialTheme.typography.headlineLarge,
@@ -90,11 +80,11 @@ fun AccountScreen() {
                             modifier = Modifier.padding(vertical = 16.dp),
                             fontSize = 40.sp
                         )
-
+                        //Logout button
                         Button(
                             onClick = {
                                 viewModel.logoutAccount(
-                                    onLoading = {isLoading = it},
+                                    onLoading = { isLoading = it },
                                     onFinished = { refreshTrigger++ })
                             },
                             modifier = Modifier
@@ -107,8 +97,8 @@ fun AccountScreen() {
                         ) {
                             Text(
                                 text = "Log Out",
-                                style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                                textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
                                 fontSize = 32.sp
                             )
 
@@ -116,7 +106,7 @@ fun AccountScreen() {
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Below the button: Fun food facts
+                        // Just a fun thing for the user
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -124,25 +114,25 @@ fun AccountScreen() {
                         ) {
                             Text(
                                 text = "Fun Fact: You've got ${DatabaseProvider.bookmarkedUrlsList.size} bookmarks!",
-                                style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                                textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
                 } else {
-
                     val configuration = LocalConfiguration.current
-
                     val isLandscape =
                         configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+                    //This shows the Account and login section when user is not logged in
+                    //It is custom designed to account for orientation
                     if (isLandscape) {
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(32.dp) // Space between Create & Login
+                            horizontalArrangement = Arrangement.spacedBy(32.dp)
                         ) {
                             CreateAccountSection(
                                 createEmail,
@@ -152,11 +142,11 @@ fun AccountScreen() {
                                 modifier = Modifier.weight(1f),
                                 true,
                                 viewModel = viewModel,
-                                loadingChange = {isLoading = it},
+                                loadingChange = { isLoading = it },
                                 refreshChange = {
-                                    if(it){
+                                    if (it) {
                                         refreshTrigger++
-                                    }else{
+                                    } else {
                                         isWrong = true
                                     }
                                 }
@@ -169,18 +159,17 @@ fun AccountScreen() {
                                 modifier = Modifier.weight(1f),
                                 true,
                                 viewModel = viewModel,
-                                loadingChange = {isLoading = it},
+                                loadingChange = { isLoading = it },
                                 refreshChange = {
-                                    if(it){
+                                    if (it) {
                                         refreshTrigger++
-                                    }else{
+                                    } else {
                                         isWrong = true
                                     }
                                 }
                             )
                         }
-                    }
-                    else {
+                    } else {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -193,11 +182,11 @@ fun AccountScreen() {
                                 onCreateEmailChange = { createEmail = it },
                                 onCreatePasswordChange = { createPassword = it },
                                 viewModel = viewModel,
-                                loadingChange = {isLoading = it},
+                                loadingChange = { isLoading = it },
                                 refreshChange = {
-                                    if(it){
+                                    if (it) {
                                         refreshTrigger++
-                                    }else{
+                                    } else {
                                         isWrong = true
                                     }
                                 }
@@ -208,24 +197,24 @@ fun AccountScreen() {
                                 onLoginEmailChange = { loginEmail = it },
                                 onLoginPasswordChange = { loginPassword = it },
                                 viewModel = viewModel,
-                                loadingChange = {isLoading = it},
+                                loadingChange = { isLoading = it },
                                 refreshChange = {
-                                    if(it){
-                                     refreshTrigger++
-                                    }else{
+                                    if (it) {
+                                        refreshTrigger++
+                                    } else {
                                         isWrong = true
                                     }
                                 }
                             )
                         }
                     }
-                    print(isWrong)
-                    if(isWrong){
-                    Text(
-                        text = "Invalid Email/Password",
-                        style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                        textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                        fontSize = 32.sp
+                    //If the user puts in an invalid email/password
+                    if (isWrong) {
+                        Text(
+                            text = "Invalid Email/Password",
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                            fontSize = 32.sp
                         )
                     }
                 }
@@ -234,6 +223,7 @@ fun AccountScreen() {
     }
 }
 
+//This is for the creating account section
 @Composable
 private fun CreateAccountSection(
     createEmail: String,
@@ -246,11 +236,6 @@ private fun CreateAccountSection(
     refreshChange: (Boolean) -> Unit,
     loadingChange: (Boolean) -> Unit
 ) {
-
-    val scope = rememberCoroutineScope()
-    val darkGreen = Color(0xFF49891a)
-
-
     Column(
         modifier = modifier
     ) {
@@ -261,15 +246,16 @@ private fun CreateAccountSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        //When in landscaped, the button is changed to be next to the fields instead of below
         if (isLandscape) {
-            // LANDSCAPE: fields and button side-by-side
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(
-                    modifier = Modifier.weight(2f) // Fields take more space
+                    modifier = Modifier.weight(2f)
                 ) {
+                    //Email
                     OutlinedTextField(
                         value = createEmail,
                         onValueChange = onCreateEmailChange,
@@ -278,7 +264,7 @@ private fun CreateAccountSection(
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-
+                    //Password
                     OutlinedTextField(
                         value = createPassword,
                         onValueChange = onCreatePasswordChange,
@@ -288,10 +274,14 @@ private fun CreateAccountSection(
                     )
                 }
 
+                //Create account
                 Button(
-                    onClick = { viewModel.createAccount(createEmail, createPassword,
-                        onLoading = {loadingChange(it)},
-                        onFinished = {refreshChange(it)}) },
+                    onClick = {
+                        viewModel.createAccount(
+                            createEmail, createPassword,
+                            onLoading = { loadingChange(it) },
+                            onFinished = { refreshChange(it) })
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .height(120.dp),
@@ -299,18 +289,18 @@ private fun CreateAccountSection(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = darkGreen,
                         contentColor = Color.White
-                    )// taller to match the two fields
+                    )
                 ) {
                     Text(
                         text = "Create\nAccount",
-                        style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                        textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
                         fontSize = 20.sp
                     )
                 }
             }
         } else {
-            // PORTRAIT: fields and button stacked vertically
+            //Email
             OutlinedTextField(
                 value = createEmail,
                 onValueChange = onCreateEmailChange,
@@ -320,6 +310,7 @@ private fun CreateAccountSection(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            //Password
             OutlinedTextField(
                 value = createPassword,
                 onValueChange = onCreatePasswordChange,
@@ -330,22 +321,26 @@ private fun CreateAccountSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            //Create account
             Button(
-                onClick = { viewModel.createAccount(createEmail, createPassword,
-                    onLoading = {loadingChange(it)},
-                    onFinished = {refreshChange(it)}) },
+                onClick = {
+                    viewModel.createAccount(
+                        createEmail, createPassword,
+                        onLoading = { loadingChange(it) },
+                        onFinished = { refreshChange(it) })
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = darkGreen,
                     contentColor = Color.White
-                )// taller to match the two fields
+                )
             ) {
                 Text(
                     "Create Account",
-                    style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                    textAlign = TextAlign.Center, // <-- center-align the text inside itself
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
                     fontSize = 20.sp
                 )
             }
@@ -366,115 +361,129 @@ private fun LoginSection(
     refreshChange: (Boolean) -> Unit,
     loadingChange: (Boolean) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    val darkGreen = Color(0xFF49891a)
 
-       Column(
-           modifier = modifier
-       ) {
-           Text(
-               text = "Login",
-               style = MaterialTheme.typography.headlineMedium
-           )
+    Column(
+        modifier = modifier
+    ) {
+        Text(
+            text = "Login",
+            style = MaterialTheme.typography.headlineMedium
+        )
 
-           Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-           if (isLandscape) {
-               // LANDSCAPE: fields and button side-by-side
-               Row(
-                   modifier = Modifier.fillMaxWidth(),
-                   horizontalArrangement = Arrangement.spacedBy(16.dp)
-               ) {
-                   Column(
-                       modifier = Modifier.weight(2f)
-                   ) {
-                       OutlinedTextField(
-                           value = loginEmail,
-                           onValueChange = onLoginEmailChange,
-                           label = { Text("Email/Username") },
-                           modifier = Modifier.fillMaxWidth()
-                       )
+        //When in landscaped, the button is changed to be next to the fields instead of below
+        if (isLandscape) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(2f)
+                ) {
+                    //Email
+                    OutlinedTextField(
+                        value = loginEmail,
+                        onValueChange = onLoginEmailChange,
+                        label = { Text("Email/Username") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                       Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                       OutlinedTextField(
-                           value = loginPassword,
-                           onValueChange = onLoginPasswordChange,
-                           label = { Text("Password") },
-                           modifier = Modifier.fillMaxWidth(),
-                           visualTransformation = PasswordVisualTransformation()
-                       )
-                   }
+                    //Password
+                    OutlinedTextField(
+                        value = loginPassword,
+                        onValueChange = onLoginPasswordChange,
+                        label = { Text("Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                }
 
-                   Button(
-                       onClick = { viewModel.loginAccount(loginEmail, loginPassword,
-                           onLoading = {loadingChange(it)},
-                           onFinished = {refreshChange(it)}) },
-                       modifier = Modifier
-                           .weight(1f)
-                           .height(130.dp),
-                       shape = RoundedCornerShape(20.dp),
-                       colors = ButtonDefaults.buttonColors(
-                           containerColor = darkGreen,
-                           contentColor = Color.White
-                       )// taller to match the two fields// Match fields height roughly
-                   ) {
-                       Text(
-                           "Login",
-                           style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                           textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                           fontSize = 20.sp
-                       )
-                   }
-               }
-           } else {
-               // PORTRAIT: fields and button stacked vertically
-               OutlinedTextField(
-                   value = loginEmail,
-                   onValueChange = onLoginEmailChange,
-                   label = { Text("Email") },
-                   modifier = Modifier.fillMaxWidth()
-               )
+                //Login
+                Button(
+                    onClick = {
+                        viewModel.loginAccount(
+                            loginEmail, loginPassword,
+                            onLoading = { loadingChange(it) },
+                            onFinished = { refreshChange(it) })
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(130.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = darkGreen,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        "Login",
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
+                        fontSize = 20.sp
+                    )
+                }
+            }
+        } else {
+            //Email
+            OutlinedTextField(
+                value = loginEmail,
+                onValueChange = onLoginEmailChange,
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-               Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-               OutlinedTextField(
-                   value = loginPassword,
-                   onValueChange = onLoginPasswordChange,
-                   label = { Text("Password") },
-                   modifier = Modifier.fillMaxWidth(),
-                   visualTransformation = PasswordVisualTransformation()
-               )
+            //Password
+            OutlinedTextField(
+                value = loginPassword,
+                onValueChange = onLoginPasswordChange,
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation()
+            )
 
-               Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-               Button(
-                   onClick = { viewModel.loginAccount(loginEmail, loginPassword,
-                       onLoading = {loadingChange(it)},
-                       onFinished = {refreshChange(it)}) },
-                   modifier = Modifier
-                       .fillMaxWidth()
-                       .height(60.dp),
-                   colors = ButtonDefaults.buttonColors(
-                       containerColor = darkGreen,
-                       contentColor = Color.White
-                   )// taller to match the two fields
-               ) {
-                   Text(
-                       "Login",
-                       style = MaterialTheme.typography.headlineSmall, // <-- larger text style
-                       textAlign = TextAlign.Center, // <-- center-align the text inside itself
-                       fontSize = 20.sp
-                   )
-               }
-           }
-       }
+            //Login
+            Button(
+                onClick = {
+                    viewModel.loginAccount(
+                        loginEmail, loginPassword,
+                        onLoading = { loadingChange(it) },
+                        onFinished = { refreshChange(it) })
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = darkGreen,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    "Login",
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    fontSize = 20.sp
+                )
+            }
+        }
+    }
 
 }
 
+//This is a view model to handle the backend so that it runs regardless of the composable state
 class AccountView : ViewModel() {
-
-    fun createAccount(email: String, password: String, onLoading:(Boolean) -> Unit,onFinished: (Boolean) -> Unit) {
+    fun createAccount(
+        email: String,
+        password: String,
+        onLoading: (Boolean) -> Unit,
+        onFinished: (Boolean) -> Unit
+    ) {
         viewModelScope.launch {
             var success = false
             onLoading(true)
@@ -486,7 +495,13 @@ class AccountView : ViewModel() {
             }
         }
     }
-    fun loginAccount(email: String, password: String, onLoading:(Boolean) -> Unit, onFinished: (Boolean) -> Unit) {
+
+    fun loginAccount(
+        email: String,
+        password: String,
+        onLoading: (Boolean) -> Unit,
+        onFinished: (Boolean) -> Unit
+    ) {
         viewModelScope.launch {
             var success = false
             onLoading(true)
@@ -498,7 +513,8 @@ class AccountView : ViewModel() {
             }
         }
     }
-    fun logoutAccount( onLoading:(Boolean) -> Unit, onFinished: () -> Unit) {
+
+    fun logoutAccount(onLoading: (Boolean) -> Unit, onFinished: () -> Unit) {
         viewModelScope.launch {
             onLoading(true)
             try {
@@ -511,19 +527,21 @@ class AccountView : ViewModel() {
     }
 }
 
-
-suspend fun onCreateAccount(email: String, password: String): Boolean{
+//Creates the account
+//Will return as false if the account already exists
+//Any url that is bookmarked will automatically be added to the account
+suspend fun onCreateAccount(email: String, password: String): Boolean {
     var LoggedIn = false
 
     if (email.isEmpty() || password.isEmpty()) {
         println("Invalid email or password")
-        return LoggedIn // Return false if validation fails
+        return LoggedIn
     }
 
-    if(DatabaseProvider.dynamoDBHelper.getUserDataById(email,password) == null){
+    if (DatabaseProvider.dynamoDBHelper.getUserDataById(email, password) == null) {
         println("Account Doesnt Exist")
         DatabaseProvider.db.userDataDao().updateLoginStatus(true)
-        DatabaseProvider.db.userDataDao().updateEmailAndPassword(email,password)
+        DatabaseProvider.db.userDataDao().updateEmailAndPassword(email, password)
         DatabaseProvider.isLoggedIn = true
         DatabaseProvider.email = email
         DatabaseProvider.password = password
@@ -536,25 +554,28 @@ suspend fun onCreateAccount(email: String, password: String): Boolean{
 
         DatabaseProvider.dynamoDBHelper.saveUserData(user)
         LoggedIn = true
-    }else{
+    } else {
         println("Account Exists")
     }
     return LoggedIn
 }
 
-suspend fun onLogin(email: String, password: String) : Boolean{
+//Logs into the account
+//Will fail if an account doesn't exist
+//Any url that is bookmarked will be replaced with the user's bookmarks
+suspend fun onLogin(email: String, password: String): Boolean {
     var LoggedIn = false
 
     if (email.isEmpty() || password.isEmpty()) {
         println("Invalid email or password")
-        return LoggedIn // Return false if validation fails
+        return LoggedIn
     }
 
-    val userData = DatabaseProvider.dynamoDBHelper.getUserDataById(email,password)
-    if(userData != null){
+    val userData = DatabaseProvider.dynamoDBHelper.getUserDataById(email, password)
+    if (userData != null) {
         println("Account Exists")
         DatabaseProvider.db.userDataDao().updateLoginStatus(true)
-        DatabaseProvider.db.userDataDao().updateEmailAndPassword(email,password)
+        DatabaseProvider.db.userDataDao().updateEmailAndPassword(email, password)
         DatabaseProvider.db.userDataDao().updateBookmarkedUrls(userData.bookmarkedUrls)
 
         DatabaseProvider.isLoggedIn = true
@@ -562,15 +583,16 @@ suspend fun onLogin(email: String, password: String) : Boolean{
         DatabaseProvider.password = password
         DatabaseProvider.bookmarkedUrlsList = userData.bookmarkedUrls.toMutableList()
         LoggedIn = true
-    }else{
+    } else {
         println("Account Doesnt Exist")
     }
     return LoggedIn
 }
 
-suspend fun onLogout(){
+//Logs out, clears whatever was bookmarked locally
+suspend fun onLogout() {
     DatabaseProvider.db.userDataDao().updateLoginStatus(false)
-    DatabaseProvider.db.userDataDao().updateEmailAndPassword("","")
+    DatabaseProvider.db.userDataDao().updateEmailAndPassword("", "")
     DatabaseProvider.db.userDataDao().updateBookmarkedUrls(emptyList())
 
     DatabaseProvider.isLoggedIn = false

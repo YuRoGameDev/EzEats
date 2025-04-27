@@ -3,29 +3,28 @@ package com.example.ezeats.storage
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.coroutines.*
 import com.example.ezeats.ezeats
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 object DatabaseProvider {
-
     var bookmarkedUrlsList: MutableList<String> = mutableListOf()
     var email: String = ""
     var password: String = ""
     var isLoggedIn: Boolean = false
     val dynamoDBHelper = DynamoDBHelper()
 
+    //Creates a singleton used in every file
+    //On first time the app is opened, a single Room for the app will be created
+    //That room will be used for the entire app duration till its uninstalled
     val db: AppDatabase by lazy {
         Room.databaseBuilder(
-            ezeats.Companion.context,  // Use your Application context
+            ezeats.Companion.context,
             AppDatabase::class.java,
             "user_database"
-        ).addCallback(object: RoomDatabase.Callback(){
+        ).addCallback(object : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
 
-                // Run in a coroutine since this is a background thread
                 CoroutineScope(Dispatchers.IO).launch {
                     val userDao = DatabaseProvider.db.userDataDao()
 
@@ -42,12 +41,14 @@ object DatabaseProvider {
 
             }
         })
-            .fallbackToDestructiveMigration(false)  // Optional, specify migration strategy
+            .fallbackToDestructiveMigration(false)
             .build()
 
     }
 
-    fun setList(){
+    //This sets the user room data at the start.
+    //If the user is logged in then it gets the data from AWS instead
+    fun setList() {
         CoroutineScope(Dispatchers.IO).launch {
             val user = db.userDataDao().getBookmarkedUrls()
             val urls = user?.bookmarkedUrls ?: emptyList()
@@ -57,7 +58,7 @@ object DatabaseProvider {
             password = db.userDataDao().getPassword()
             isLoggedIn = db.userDataDao().isUserLoggedIn()
 
-            if(isLoggedIn){
+            if (isLoggedIn) {
                 val userAws: AWSUserData? = dynamoDBHelper.getUserDataById(email, password)
                 val bookmarkedUrls: List<String> = userAws?.bookmarkedUrls ?: emptyList()
                 bookmarkedUrlsList = bookmarkedUrls.toMutableList()
@@ -66,15 +67,17 @@ object DatabaseProvider {
         }
     }
 
+    //Gets a list of the book
     fun getBookmarkedUrls(): List<String> {
-        println(bookmarkedUrlsList)
         return bookmarkedUrlsList
     }
 
-    fun isBookmarked(url:String): Boolean{
+    //Self check a url to see if its bookmarked
+    fun isBookmarked(url: String): Boolean {
         return bookmarkedUrlsList.contains(url)
     }
 
+    //Adds a bookmark. Updates AWS if logged in
     fun addBookmark(url: String) {
         if (!bookmarkedUrlsList.contains(url)) {
             bookmarkedUrlsList.add(url)
@@ -83,14 +86,14 @@ object DatabaseProvider {
             CoroutineScope(Dispatchers.IO).launch {
                 db.userDataDao().updateBookmarkedUrls(bookmarkedUrlsList)
 
-                if(isLoggedIn){
-                   dynamoDBHelper.updateBookmarkedUrls(email, bookmarkedUrlsList)
+                if (isLoggedIn) {
+                    dynamoDBHelper.updateBookmarkedUrls(email, bookmarkedUrlsList)
                 }
             }
         }
     }
 
-    // Function to remove a URL from the list
+    //Removes a bookmark. Updates AWS if logged in
     fun removeBookmark(url: String) {
         if (bookmarkedUrlsList.contains(url)) {
             bookmarkedUrlsList.remove(url)
@@ -99,7 +102,7 @@ object DatabaseProvider {
             CoroutineScope(Dispatchers.IO).launch {
                 db.userDataDao().updateBookmarkedUrls(bookmarkedUrlsList)
 
-                if(isLoggedIn){
+                if (isLoggedIn) {
                     dynamoDBHelper.updateBookmarkedUrls(email, bookmarkedUrlsList)
                 }
             }

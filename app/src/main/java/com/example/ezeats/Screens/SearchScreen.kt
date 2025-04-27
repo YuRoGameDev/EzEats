@@ -1,41 +1,50 @@
 package com.example.ezeats.Screens
+
 import android.content.res.Configuration
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+
 import com.example.ezeats.storage.DatabaseProvider
 import com.example.ezeats.recipe.*
+
 import kotlinx.coroutines.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+
 import org.json.JSONObject
 import org.jsoup.Jsoup
+
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+
+import com.example.ezeats.Credentials
+import com.example.ezeats.ui.theme.*
 import kotlin.collections.plus
 
-
-// Composable function to display the search screen
+//This handles the visuals for the search screen.
+//I am too lazy to comment this all in detail, but generally
+//The user searches for recipes, it connects to google api (or duckduckGo incase quota is met)
+//Then the screen is populated with recipes the user can book mark. When clicking on one a web view is opened
+//Same like the bookmark screen it is designed customally for landscaped mode
+//There was some other stuff added but Im too tired to explain it, it just works and looks cool
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun SearchScreen() {
@@ -147,13 +156,12 @@ fun HeaderSection(
     onFilterClicked: (RecipeFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val darkGreen = Color(0xFF49891a)
+
 
     Column(
         modifier = modifier
             .padding(16.dp)
     ) {
-        // Search bar + Button
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -173,11 +181,16 @@ fun HeaderSection(
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = darkGreen,
-                    unfocusedIndicatorColor = darkGreen,
+                    focusedIndicatorColor = darkGreen
+,
+                    unfocusedIndicatorColor = darkGreen
+
+,
                     focusedLabelColor = Color.Black,
                     unfocusedLabelColor = Color.Black,
-                    cursorColor = darkGreen,
+                    cursorColor = darkGreen
+
+,
                     disabledIndicatorColor = Color.Gray
                 ),
                 textStyle = TextStyle(
@@ -192,7 +205,9 @@ fun HeaderSection(
                 enabled = searchTerm.isNotBlank(),
                 modifier = Modifier.fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = darkGreen,
+                    containerColor = darkGreen
+
+,
                     contentColor = Color.Black
                 )
             ) {
@@ -206,10 +221,10 @@ fun HeaderSection(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-        // Filters
+        val isLandscape =
+            LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         if (isLandscape) {
-            val chipRows = RecipeFilter.entries.chunked(2) // Break into rows with 2 items each
+            val chipRows = RecipeFilter.entries.chunked(2)
 
             Column(
                 modifier = Modifier
@@ -229,17 +244,18 @@ fun HeaderSection(
                                 label = { Text(filter.label) },
                                 modifier = Modifier
                                     .height(50.dp)
-                                    .weight(1f), // Distribute evenly within the row
+                                    .weight(1f),
                                 colors = FilterChipDefaults.filterChipColors(
                                     containerColor = Color.Transparent,
                                     labelColor = Color.Black,
-                                    selectedContainerColor = darkGreen,
+                                    selectedContainerColor = darkGreen
+
+,
                                     selectedLabelColor = Color.White
                                 )
                             )
                         }
 
-                        // Fill empty space if there's an odd number of filters
                         if (row.size < 2) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -260,7 +276,9 @@ fun HeaderSection(
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = Color.Transparent,
                             labelColor = Color.Black,
-                            selectedContainerColor = darkGreen,
+                            selectedContainerColor = darkGreen
+
+,
                             selectedLabelColor = Color.White
                         )
                     )
@@ -290,6 +308,7 @@ fun RecipeSection(
                 CircularProgressIndicator()
             }
         }
+
         recipes.isEmpty() && !searched -> {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -298,6 +317,7 @@ fun RecipeSection(
                 Text("Search to find some recipes!", color = Color.Black, fontSize = 30.sp)
             }
         }
+
         recipes.isEmpty() && searchTerm.isNotBlank() && searched -> {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -306,6 +326,7 @@ fun RecipeSection(
                 Text("No results found", color = Color.Black, fontSize = 30.sp)
             }
         }
+
         filteredRecipes.isNotEmpty() -> {
             LazyColumn(
                 modifier = Modifier
@@ -331,126 +352,131 @@ fun RecipeSection(
     }
 }
 
-suspend fun searchRecipesWithFallback(searchTerm: String, numResults: Int, maxResults: Long): List<String> {
+//This is to search for recipes. If Google Apis quota is met go to duckduckGo
+suspend fun searchRecipesWithFallback(
+    searchTerm: String,
+    numResults: Int,
+    maxResults: Long
+): List<String> {
     return try {
-        // Attempt to use Google API to search for recipes
         searchRecipes(searchTerm, numResults, maxResults)
     } catch (e: Exception) {
-        // Catch the error (e.g., rate limit reached) and log it
         println("Google API rate limit reached or error occurred: ${e.message}")
 
-        // Fallback to DuckDuckGo search
         searchDuckRecipes(searchTerm, numResults, maxResults)
     }
 }
 
-// Function to search for recipes and fetch the top 10 URLs
-suspend fun searchRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> = withContext(Dispatchers.IO) {
-    val apiKey = "AIzaSyBIY4Za1x9wIaWCoYhh0-x64TFAW-hOgCg"
-    val cseId = "13f9e92f2347c46c6"
-    val encodedQuery = URLEncoder.encode(query, "UTF-8")
-    val urls = mutableListOf<String>()
+//The main google api search. Works well, pretty fast, and gets the full list of recipes
+//because google paginates. However Im only using free tier and I aint wasting my money so
+//the quota can get filled up pretty quickly if more than 5+ people are searching at once every second
+suspend fun searchRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> =
+    withContext(Dispatchers.IO) {
+        val apiKey = Credentials.GOOGLE_SEARCH_API_KEY
+        val cseId = Credentials.GOOGLE_CSE_ID
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val urls = mutableListOf<String>()
 
-    try {
-        var startIndex = 1
-        val startTime = System.currentTimeMillis()
+        try {
+            var startIndex = 1
+            val startTime = System.currentTimeMillis()
 
-        while (urls.size < querySize) {
-            // Check if time limit has been exceeded
-            if (System.currentTimeMillis() - startTime > timeLimitMs) {
-                println("Time limit exceeded.")
-                break
-            }
-
-            val searchUrl =
-                "https://www.googleapis.com/customsearch/v1?key=$apiKey&cx=$cseId&q=$encodedQuery&start=$startIndex"
-            val url = URL(searchUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-
-            val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(responseText)
-
-            val items = json.optJSONArray("items")
-            if (items == null || items.length() == 0) break  // No more results
-
-            for (i in 0 until items.length()) {
-                val item = items.getJSONObject(i)
-                val link = item.optString("link")
-                if (link.startsWith("http")) {
-                    urls.add(link)
-                    println(link)
-                    if (urls.size >= querySize) break
+            while (urls.size < querySize) {
+                if (System.currentTimeMillis() - startTime > timeLimitMs) {
+                    println("Time limit exceeded.")
+                    break
                 }
-            }
 
-            // Increment by 10 for the next page
-            startIndex += 10
-            delay(1000) // Be polite and avoid rate limiting
-        }
-    } catch (e: TimeoutCancellationException) {
-        println("Search operation timed out.")
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+                val searchUrl =
+                    "https://www.googleapis.com/customsearch/v1?key=$apiKey&cx=$cseId&q=$encodedQuery&start=$startIndex"
+                val url = URL(searchUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
 
-    urls.take(querySize)
-}
+                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val json = JSONObject(responseText)
 
-suspend fun searchDuckRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> = withContext(Dispatchers.IO) {
-    val encodedQuery = URLEncoder.encode("$query recipe", "UTF-8")
-    val urls = mutableSetOf<String>()
+                val items = json.optJSONArray("items")
+                if (items == null || items.length() == 0) break
 
-    val allowedDomains = listOf(
-        "allrecipes.com", "seriouseats.com", "epicurious.com", "foodnetwork.com",
-        "bbcgoodfood.com", "tasty.co", "cooking.nytimes.com", "bonappetit.com",
-        "thekitchn.com", "smittenkitchen.com", "minimalistbaker.com", "halfbakedharvest.com",
-        "simplyrecipes.com", "loveandlemons.com", "cookieandkate.com", "damndelicious.net",
-        "gimmesomeoven.com", "budgetbytes.com", "chowhound.com", "eatingwell.com"
-    )
-
-    try {
-        var start = 0
-        val startTime = System.currentTimeMillis()
-
-        while (urls.size < querySize) {
-            // Check if time limit has been exceeded
-            if (System.currentTimeMillis() - startTime > timeLimitMs) {
-                println("Time limit exceeded.")
-                break
-            }
-
-            val duckUrl = "https://html.duckduckgo.com/html/?q=$encodedQuery&s=$start"
-            val doc = Jsoup.connect(duckUrl)
-                .userAgent("Mozilla/5.0")
-                .timeout(10000)
-                .get()
-
-            val results = doc.select("a.result__a")
-            if (results.isEmpty()) break
-
-            for (element in results) {
-                val href = element.absUrl("href")
-                if (href.startsWith("http") && allowedDomains.any { href.contains(it) }) {
-                    // Avoid adding duplicate URLs
-                    if (!urls.contains(href)) {
-                        urls.add(href)
-                        println(href)
+                for (i in 0 until items.length()) {
+                    val item = items.getJSONObject(i)
+                    val link = item.optString("link")
+                    if (link.startsWith("http")) {
+                        urls.add(link)
+                        println(link)
+                        if (urls.size >= querySize) break
                     }
-                    if (urls.size >= querySize) break
                 }
-            }
 
-            start += 50 // Move to the next page (increment the start by 50)
-            delay(1000) // Be polite and avoid rate limiting
+                startIndex += 10
+                delay(1000)
+            }
+        } catch (e: TimeoutCancellationException) {
+            println("Search operation timed out.")
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-    } catch (e: TimeoutCancellationException) {
-        println("Search operation timed out.")
-    } catch (e: Exception) {
-        e.printStackTrace()
+
+        urls.take(querySize)
     }
 
-    urls.take(querySize).toList()
-}
+//The slower shittier version of the google search. The engine doesnt have pagination or domain
+//filtering so I gotta do it customally. its very slow and its timedout to 10 seconds. At most you
+//can maybe get like 5, maybe 10 recipes if lucky
+suspend fun searchDuckRecipes(query: String, querySize: Int, timeLimitMs: Long): List<String> =
+    withContext(Dispatchers.IO) {
+        val encodedQuery = URLEncoder.encode("$query recipe", "UTF-8")
+        val urls = mutableSetOf<String>()
+
+        val allowedDomains = listOf(
+            "allrecipes.com", "seriouseats.com", "epicurious.com", "foodnetwork.com",
+            "bbcgoodfood.com", "tasty.co", "cooking.nytimes.com", "bonappetit.com",
+            "thekitchn.com", "smittenkitchen.com", "minimalistbaker.com", "halfbakedharvest.com",
+            "simplyrecipes.com", "loveandlemons.com", "cookieandkate.com", "damndelicious.net",
+            "gimmesomeoven.com", "budgetbytes.com", "chowhound.com", "eatingwell.com"
+        )
+
+        try {
+            var start = 0
+            val startTime = System.currentTimeMillis()
+
+            while (urls.size < querySize) {
+                if (System.currentTimeMillis() - startTime > timeLimitMs) {
+                    println("Time limit exceeded.")
+                    break
+                }
+
+                val duckUrl = "https://html.duckduckgo.com/html/?q=$encodedQuery&s=$start"
+                val doc = Jsoup.connect(duckUrl)
+                    .userAgent("Mozilla/5.0")
+                    .timeout(10000)
+                    .get()
+
+                val results = doc.select("a.result__a")
+                if (results.isEmpty()) break
+
+                for (element in results) {
+                    val href = element.absUrl("href")
+                    if (href.startsWith("http") && allowedDomains.any { href.contains(it) }) {
+                        if (!urls.contains(href)) {
+                            urls.add(href)
+                            println(href)
+                        }
+                        if (urls.size >= querySize) break
+                    }
+                }
+
+                start += 50
+                delay(1000)
+            }
+        } catch (e: TimeoutCancellationException) {
+            println("Search operation timed out.")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        urls.take(querySize).toList()
+    }

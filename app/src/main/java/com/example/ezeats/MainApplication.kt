@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 
+//Application class required for the Room Storage
 class ezeats : Application() {
     companion object {
         @SuppressLint("StaticFieldLeak")

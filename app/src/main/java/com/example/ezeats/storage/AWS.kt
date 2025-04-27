@@ -2,43 +2,42 @@ package com.example.ezeats.storage
 
 import android.content.ContentValues.TAG
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
+import com.example.ezeats.Credentials
+import kotlinx.coroutines.*
+
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
 import software.amazon.awssdk.http.SdkHttpClient
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest
-import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest
+import software.amazon.awssdk.services.dynamodb.model.*
 
-
-
-
+//User class only for AWS.
 data class AWSUserData(
     val email: String,
     val password: String,
     val bookmarkedUrls: List<String>
 )
 
+//This is the entire Online component, AWS Dynamo which stores user data online
+//Only thing that should be done is to encrpyt user password. Rn its only in plaintext
 class DynamoDBHelper {
     val credentials = AwsBasicCredentials.create(
-        "AKIAQ3EGSOQJHU23DYSB",
-        "vPbUjwyU+OB9pm212Q1snqT7hCN0Bl/eou5HZnrt"
+        Credentials.AWS_API_KEY,
+        Credentials.AWS_SECRET_KEY
     )
 
     val sdkHttpClient: SdkHttpClient = UrlConnectionHttpClient.builder().build()
 
-    val client =  DynamoDbClient.builder()
+    //Builds the dynamo table
+    val client = DynamoDbClient.builder()
         .region(Region.US_EAST_1)
         .credentialsProvider(StaticCredentialsProvider.create(credentials))
         .httpClient(sdkHttpClient)
         .build()
 
+    //Convert the UserData class to something AWS can read
     fun userDataToItem(user: AWSUserData): Map<String, AttributeValue> {
         return mapOf(
             "email" to AttributeValue.fromS(user.email),
@@ -49,11 +48,12 @@ class DynamoDBHelper {
         )
     }
 
+    //Saves the user data
     suspend fun saveUserData(user: AWSUserData) {
         withContext(Dispatchers.IO) {
             try {
                 val request = PutItemRequest.builder()
-                    .tableName("EzEatsUsers")
+                    .tableName(Credentials.AWS_DYNAMO_DB_TABLE)
                     .item(userDataToItem(user))
                     .build()
 
@@ -65,13 +65,14 @@ class DynamoDBHelper {
         }
     }
 
-    suspend fun  getUserDataById(id: String, password: String): AWSUserData? {
+    //Gets user data. It checks password and email
+    suspend fun getUserDataById(id: String, password: String): AWSUserData? {
         return withContext(Dispatchers.IO) {
             try {
                 val key = mapOf("email" to AttributeValue.fromS(id))
 
                 val request = GetItemRequest.builder()
-                    .tableName("EzEatsUsers")
+                    .tableName(Credentials.AWS_DYNAMO_DB_TABLE)
                     .key(key)
                     .build()
 
@@ -82,7 +83,6 @@ class DynamoDBHelper {
                     val storedPassword = item["password"]?.s() ?: ""
 
                     if (storedPassword == password) {
-                        val isLoggedIn = item["isLoggedIn"]?.bool() ?: false
                         val bookmarkedUrls =
                             item["bookmarkedUrls"]?.l()?.mapNotNull { it.s() } ?: emptyList()
 
@@ -106,22 +106,19 @@ class DynamoDBHelper {
         }
     }
 
-    suspend fun updateBookmarkedUrls(
-        email: String,
-        newUrls: List<String>,
-        tableName: String = "EzEatsUsers"
-    ): Boolean {
+    //Only for updating a users bookmarked Urls. Password isn't needed
+    suspend fun updateBookmarkedUrls(email: String, newUrls: List<String>): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                // Step 1: Fetch existing user data
-                val existingUser = getUserDataById(email, password = "") // you might need to adjust password handling if needed
+                val existingUser = getUserDataById(
+                    email,
+                    password = ""
+                )
 
                 val existingUrls = existingUser?.bookmarkedUrls ?: emptyList()
 
-                // Step 2: Merge existing + new URLs
                 val mergedUrls = (existingUrls + newUrls).distinct()
 
-                // Step 3: Convert merged list to AttributeValue
                 val urlsAttribute = AttributeValue.fromL(
                     mergedUrls.map { AttributeValue.fromS(it) }
                 )
@@ -130,7 +127,7 @@ class DynamoDBHelper {
                 val expressionValues = mapOf(":urls" to urlsAttribute)
 
                 val request = UpdateItemRequest.builder()
-                    .tableName(tableName)
+                    .tableName(Credentials.AWS_DYNAMO_DB_TABLE)
                     .key(key)
                     .updateExpression("SET bookmarkedUrls = :urls")
                     .expressionAttributeValues(expressionValues)

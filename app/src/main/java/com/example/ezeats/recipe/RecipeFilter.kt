@@ -8,6 +8,7 @@ enum class RecipeFilter(val label: String) {
     GLUTEN_FREE("Gluten-Free"),
 }
 
+//Filters the list of recipe Previews
 fun filterAndSortRecipes(
     recipes: List<RecipePreview>,
     activeFilters: Set<RecipeFilter>
@@ -18,8 +19,9 @@ fun filterAndSortRecipes(
         val titleLower = recipe.title.lowercase()
 
         if (RecipeFilter.GLUTEN_FREE in activeFilters) {
-            val containsGluten = recipe.ingredients.any { it.contains("gluten", ignoreCase = true) } ||
-                    titleLower.contains("gluten")
+            val containsGluten =
+                recipe.ingredients.any { it.contains("gluten", ignoreCase = true) } ||
+                        titleLower.contains("gluten")
             match = match && !containsGluten
             println("After Gluten-Free filter: ${if (containsGluten) "Excluded" else "Included"} recipe: ${recipe.title}")
         }
@@ -51,8 +53,7 @@ fun filterAndSortRecipes(
         }
 
         match
-    }.let { filtered ->
-        // Print count after applying all filters
+    }.let { filtered -> //This sorts based off Rating rather than excluding recipes
         println("Recipes after filtering: ${filtered.size} out of ${recipes.size} total")
 
         if (RecipeFilter.HIGH_RATING in activeFilters) {

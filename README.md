@@ -8,10 +8,6 @@ EZ Eats is a food discovery and meal planning app designed to help users explore
 <h2>Features </h2>
 🔍 Search Recipes by ingredients, cuisine, or dietary needs
 
-📝 Create & Save Meal Plans for the week
-
-🛒 Auto-Generate Grocery Lists based on selected meals
-
 ❤️ Favorite Dishes and access them anytime
 
 🔄 Easy Navigation with a clean, user-friendly UI
