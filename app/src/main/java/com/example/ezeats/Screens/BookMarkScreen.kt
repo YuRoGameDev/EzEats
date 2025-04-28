@@ -177,6 +177,7 @@ fun BookmarkHeaderSection(
                 },
                 label = { Text("Filter by Title") },
                 modifier = Modifier.weight(1f),
+                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,

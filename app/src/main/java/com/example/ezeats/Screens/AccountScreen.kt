@@ -305,7 +305,8 @@ private fun CreateAccountSection(
                 value = createEmail,
                 onValueChange = onCreateEmailChange,
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -316,6 +317,7 @@ private fun CreateAccountSection(
                 onValueChange = onCreatePasswordChange,
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
 
@@ -386,7 +388,8 @@ private fun LoginSection(
                         value = loginEmail,
                         onValueChange = onLoginEmailChange,
                         label = { Text("Email/Username") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -397,6 +400,7 @@ private fun LoginSection(
                         onValueChange = onLoginPasswordChange,
                         label = { Text("Password") },
                         modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
                         visualTransformation = PasswordVisualTransformation()
                     )
                 }
@@ -432,7 +436,8 @@ private fun LoginSection(
                 value = loginEmail,
                 onValueChange = onLoginEmailChange,
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -443,6 +448,7 @@ private fun LoginSection(
                 onValueChange = onLoginPasswordChange,
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
                 visualTransformation = PasswordVisualTransformation()
             )
 
