@@ -1,6 +1,8 @@
 package com.example.ezeats.Screens
 
 import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.BackHandler
@@ -26,6 +28,8 @@ import java.net.URL
 import java.net.URLEncoder
 
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.Alignment
@@ -33,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.sp
 
 import com.example.ezeats.Credentials
@@ -156,7 +161,7 @@ fun HeaderSection(
     onFilterClicked: (RecipeFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = modifier
@@ -169,6 +174,8 @@ fun HeaderSection(
                 .height(IntrinsicSize.Min)
                 .fillMaxWidth()
         ) {
+            val keyboardController = LocalSoftwareKeyboardController.current
+
             OutlinedTextField(
                 value = searchTerm,
                 onValueChange = { newValue ->
@@ -178,19 +185,24 @@ fun HeaderSection(
                 },
                 label = { Text("Search for some Recipes!") },
                 modifier = Modifier.weight(1f),
+                singleLine = true, // Read the line
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        onSearchClicked()
+                        keyboardController?.hide()
+                    }
+                ),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = darkGreen
-,
-                    unfocusedIndicatorColor = darkGreen
-
-,
+                    focusedIndicatorColor = darkGreen,
+                    unfocusedIndicatorColor = darkGreen,
                     focusedLabelColor = Color.Black,
                     unfocusedLabelColor = Color.Black,
-                    cursorColor = darkGreen
-
-,
+                    cursorColor = darkGreen,
                     disabledIndicatorColor = Color.Gray
                 ),
                 textStyle = TextStyle(
@@ -198,6 +210,7 @@ fun HeaderSection(
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
+
             )
 
             Button(
