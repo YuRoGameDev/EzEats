@@ -1,7 +1,6 @@
 package com.example.ezeats
 import com.example.ezeats.BuildConfig
-//API Credentials. Replace hardcoded with .env file later.
-//Also gotta deactivate and change these keys lmao
+//API Credentials. You need to update the local.properties files with your keys
 object Credentials {
     val AWS_API_KEY: String get() = BuildConfig.AWS_API_KEY
     val AWS_SECRET_KEY: String get() = BuildConfig.AWS_SECRET_KEY
