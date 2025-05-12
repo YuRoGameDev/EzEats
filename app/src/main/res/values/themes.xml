@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.EzEats" parent="android:Theme.Material.Light.NoActionBar" >
+        <item name="android:windowBackground">#FF9dc484</item>
+        <item name="android:colorBackground">#FF9dc484</item>
+    </style>
+</resources>
