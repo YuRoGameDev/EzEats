@@ -22,3 +22,15 @@ This app was created with Android Studio, rendered with JetPack Compose.
 - Google Programmable Search Engine
 - DuckDuckGo Search Engine
 - JSoup
+
+
+![2](https://github.com/user-attachments/assets/626f22b0-8d6f-4ec8-bb39-0ae0b5893654)
+![4](https://github.com/user-attachments/assets/b615cf6a-a810-4f43-9ea4-e8fa98c92b2c)
+
+
+
+
+
+
+
+
